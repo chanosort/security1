@@ -1,0 +1,1293 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <title>Dashboard - Finance Tracker</title>
+
+    <style>
+
+        /* GLOBAL*/
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        :root {
+            --green: #35c477;
+            --green-dark: #147343;
+            --green-light: #8ff0b8;
+
+            --text: #173c2e;
+            --muted: #718079;
+
+            --card: rgba(255,255,255,0.93);
+            --border: rgba(255,255,255,0.7);
+
+            --danger: #ff6262;
+
+            --background:
+                linear-gradient(
+                    135deg,
+                    #dff6e9 0%,
+                    #b8e8cf 45%,
+                    #78c99d 100%
+                );
+        }
+
+        body {
+            min-height: 100vh;
+
+            font-family:
+                Arial,
+                Helvetica,
+                sans-serif;
+
+            color: var(--text);
+
+            background: var(--background);
+
+            overflow-x: hidden;
+
+            transition:
+                background 1s ease,
+                color 0.6s ease;
+        }
+
+
+        /* DAY LIGHT EFFECT */
+
+        body::before {
+            content: "";
+
+            position: fixed;
+
+            width: 500px;
+            height: 500px;
+
+            top: -220px;
+            right: -150px;
+
+            border-radius: 50%;
+
+            background:
+                radial-gradient(
+                    circle,
+                    rgba(255,255,255,0.45),
+                    rgba(255,255,255,0)
+                );
+
+            pointer-events: none;
+
+            z-index: 0;
+        }
+
+
+        /* NIGHT SKY*/
+
+        body.night {
+            --text: #e8fff1;
+            --muted: #9aada5;
+
+            --card:
+                rgba(12, 24, 20, 0.88);
+
+            --border:
+                rgba(82, 181, 128, 0.20);
+
+            --background:
+                radial-gradient(
+                    circle at 50% 0%,
+                    #163c2b 0%,
+                    #08130f 45%,
+                    #020504 100%
+                );
+
+            background:
+                var(--background);
+        }
+
+
+        /*STARS */
+
+        body.night::after {
+            content: "";
+
+            position: fixed;
+
+            inset: 0;
+
+            z-index: 0;
+
+            pointer-events: none;
+
+            background-image:
+                radial-gradient(
+                    2px 2px at 10% 20%,
+                    white,
+                    transparent
+                ),
+                radial-gradient(
+                    1.5px 1.5px at 25% 70%,
+                    #b8ffd4,
+                    transparent
+                ),
+                radial-gradient(
+                    2px 2px at 40% 15%,
+                    white,
+                    transparent
+                ),
+                radial-gradient(
+                    1px 1px at 55% 40%,
+                    white,
+                    transparent
+                ),
+                radial-gradient(
+                    2px 2px at 72% 18%,
+                    #a9ffd0,
+                    transparent
+                ),
+                radial-gradient(
+                    1.5px 1.5px at 85% 55%,
+                    white,
+                    transparent
+                ),
+                radial-gradient(
+                    2px 2px at 92% 25%,
+                    #d6ffe6,
+                    transparent
+                ),
+                radial-gradient(
+                    1px 1px at 65% 80%,
+                    white,
+                    transparent
+                );
+
+            background-size:
+                100% 100%;
+
+            animation:
+                twinkle 4s infinite alternate;
+        }
+
+        @keyframes twinkle {
+            from {
+                opacity: 0.45;
+            }
+
+            to {
+                opacity: 1;
+            }
+        }
+
+
+        /* DASHBOARD */
+
+        .dashboard-container {
+            width: 100%;
+
+            max-width: 1200px;
+
+            margin: auto;
+
+            padding: 25px 20px 50px;
+
+            position: relative;
+
+            z-index: 2;
+        }
+
+
+        /*  NAVIGATION*/
+
+        nav {
+            display: flex;
+
+            justify-content: space-between;
+
+            align-items: center;
+
+            padding: 16px 22px;
+
+            margin-bottom: 25px;
+
+            background: var(--card);
+
+            border: 1px solid var(--border);
+
+            border-radius: 18px;
+
+            box-shadow:
+                0 12px 35px rgba(0,0,0,0.08);
+
+            backdrop-filter: blur(15px);
+
+            transition: 0.5s ease;
+        }
+
+        body.night nav {
+            box-shadow:
+                0 0 35px rgba(43, 214, 120, 0.08);
+        }
+
+        nav h2 {
+            display: flex;
+
+            align-items: center;
+
+            color: var(--green);
+
+            font-size: 22px;
+
+            font-weight: 800;
+        }
+
+        nav h2::before {
+            content: "₱";
+
+            display: flex;
+
+            justify-content: center;
+
+            align-items: center;
+
+            width: 37px;
+            height: 37px;
+
+            margin-right: 10px;
+
+            border-radius: 11px;
+
+            background:
+                linear-gradient(
+                    135deg,
+                    #35c477,
+                    #147343
+                );
+
+            color: white;
+
+            box-shadow:
+                0 5px 15px rgba(41,148,95,0.25);
+        }
+
+
+        /*  USER AREA*/
+
+        .user-area {
+            display: flex;
+
+            align-items: center;
+
+            gap: 14px;
+        }
+
+        #userDisplay {
+            color: var(--muted);
+
+            font-size: 14px;
+
+            font-weight: 600;
+        }
+
+
+        /*LOGOUT*/
+
+        .logout-btn {
+            padding: 9px 17px;
+
+            border: none;
+
+            border-radius: 10px;
+
+            background:
+                rgba(255, 80, 80, 0.10);
+
+            color: var(--danger);
+
+            font-size: 13px;
+
+            font-weight: 700;
+
+            cursor: pointer;
+
+            transition: 0.25s ease;
+        }
+
+        .logout-btn:hover {
+            background: var(--danger);
+
+            color: white;
+
+            transform: translateY(-2px);
+        }
+
+
+        /* WELCOME*/
+
+        .welcome {
+            margin-bottom: 20px;
+        }
+
+        .welcome h1 {
+            color: var(--text);
+
+            font-size: 28px;
+
+            margin-bottom: 5px;
+        }
+
+        .welcome p {
+            color: var(--muted);
+
+            font-size: 14px;
+        }
+
+
+        /* STAT CARDS*/
+
+        .stats {
+            display: grid;
+
+            grid-template-columns:
+                repeat(3, 1fr);
+
+            gap: 18px;
+
+            margin-bottom: 25px;
+        }
+
+        .stat-card {
+            position: relative;
+
+            overflow: hidden;
+
+            padding: 23px;
+
+            background: var(--card);
+
+            border:
+                1px solid var(--border);
+
+            border-radius: 18px;
+
+            box-shadow:
+                0 12px 30px rgba(0,0,0,0.08);
+
+            backdrop-filter: blur(15px);
+
+            transition:
+                transform 0.25s ease,
+                box-shadow 0.25s ease;
+        }
+
+        .stat-card:hover {
+            transform: translateY(-5px);
+
+            box-shadow:
+                0 18px 40px rgba(0,0,0,0.12);
+        }
+
+        body.night .stat-card {
+            box-shadow:
+                0 0 25px rgba(42,196,112,0.06);
+        }
+
+        .stat-icon {
+            width: 43px;
+            height: 43px;
+
+            display: flex;
+
+            align-items: center;
+            justify-content: center;
+
+            margin-bottom: 14px;
+
+            border-radius: 12px;
+
+            background:
+                rgba(53,196,119,0.12);
+
+            color: var(--green);
+
+            font-size: 20px;
+
+            font-weight: bold;
+        }
+
+        .stat-card h3 {
+            color: var(--muted);
+
+            font-size: 12px;
+
+            text-transform: uppercase;
+
+            letter-spacing: 0.6px;
+
+            margin-bottom: 8px;
+        }
+
+        .stat-card p {
+            color: var(--green);
+
+            font-size: 30px;
+
+            font-weight: 800;
+        }
+
+        #income {
+            color: #35c477;
+        }
+
+        #expenses {
+            color: #ff6868;
+        }
+
+
+        /*  MAIN CONTENT */
+
+        .main-content {
+            display: grid;
+
+            grid-template-columns:
+                repeat(2, minmax(0,1fr));
+
+            gap: 20px;
+        }
+
+
+        /* SECTION CARDS */
+
+        .section {
+            background: var(--card);
+
+            padding: 24px;
+
+            border:
+                1px solid var(--border);
+
+            border-radius: 18px;
+
+            box-shadow:
+                0 12px 30px rgba(0,0,0,0.07);
+
+            backdrop-filter: blur(15px);
+
+            transition: 0.5s ease;
+        }
+
+        body.night .section {
+            box-shadow:
+                0 0 25px rgba(40,200,110,0.05);
+        }
+
+        .section-header {
+            display: flex;
+
+            align-items: center;
+
+            gap: 10px;
+
+            margin-bottom: 18px;
+        }
+
+        .section-icon {
+            width: 34px;
+            height: 34px;
+
+            display: flex;
+
+            justify-content: center;
+            align-items: center;
+
+            border-radius: 9px;
+
+            background:
+                rgba(53,196,119,0.12);
+
+            color: var(--green);
+
+            font-weight: bold;
+        }
+
+        .section h3 {
+            color: var(--text);
+
+            font-size: 17px;
+        }
+
+        .section h4 {
+            color: var(--muted);
+
+            font-size: 13px;
+
+            margin-top: 20px;
+
+            margin-bottom: 8px;
+        }
+
+
+        /* FORMS */
+
+        .section form {
+            display: flex;
+
+            flex-direction: column;
+
+            gap: 10px;
+        }
+
+        .section form input,
+        .section form select {
+            width: 100%;
+
+            height: 46px;
+
+            padding: 0 13px;
+
+            border:
+                1.5px solid var(--border);
+
+            border-radius: 11px;
+
+            background:
+                rgba(255,255,255,0.70);
+
+            color: var(--text);
+
+            font-size: 14px;
+
+            outline: none;
+
+            transition: 0.25s ease;
+        }
+
+        body.night .section form input,
+        body.night .section form select {
+            background:
+                rgba(0,0,0,0.28);
+
+            color: #eafff1;
+        }
+
+        .section form input::placeholder {
+            color: var(--muted);
+        }
+
+        .section form input:focus,
+        .section form select:focus {
+            border-color: var(--green);
+
+            box-shadow:
+                0 0 0 3px rgba(53,196,119,0.12);
+        }
+
+
+        /*FORM BUTTONS*/
+
+        .section form button {
+            width: 100%;
+
+            height: 46px;
+
+            margin-top: 4px;
+
+            border: none;
+
+            border-radius: 11px;
+
+            background:
+                linear-gradient(
+                    135deg,
+                    #35c477,
+                    #147343
+                );
+
+            color: white;
+
+            font-size: 14px;
+
+            font-weight: 700;
+
+            cursor: pointer;
+
+            box-shadow:
+                0 7px 18px rgba(41,148,95,0.20);
+
+            transition: 0.25s ease;
+        }
+
+        .section form button:hover {
+            transform: translateY(-2px);
+
+            box-shadow:
+                0 10px 25px rgba(41,148,95,0.30);
+        }
+
+
+        /* LISTS */
+
+        .transaction-item,
+        .category-item,
+        .budget-item {
+            display: flex;
+
+            justify-content: space-between;
+
+            align-items: center;
+
+            gap: 15px;
+
+            min-height: 50px;
+
+            padding: 10px 4px;
+
+            border-bottom:
+                1px solid var(--border);
+
+            color: var(--text);
+
+            font-size: 13px;
+        }
+
+        .transaction-item:last-child,
+        .category-item:last-child,
+        .budget-item:last-child {
+            border-bottom: none;
+        }
+
+        .income {
+            color: #35c477;
+            font-weight: 700;
+        }
+
+        .expense {
+            color: #ff6868;
+            font-weight: 700;
+        }
+
+        /*TRANSACTION SCROLL*/
+
+        #transactionList {
+            max-height: 320px;
+
+            overflow-y: auto;
+
+            padding-right: 5px;
+        }
+
+        #transactionList::-webkit-scrollbar {
+            width: 5px;
+        }
+
+        #transactionList::-webkit-scrollbar-track {
+            background: rgba(100,100,100,0.08);
+        }
+
+        #transactionList::-webkit-scrollbar-thumb {
+            background: var(--green);
+
+            border-radius: 10px;
+        }
+
+        /*MOBILE*/
+
+        .muted {
+            color: var(--muted);
+            font-style: italic;
+        }
+
+        @media (max-width: 768px) {
+
+            .stats {
+                grid-template-columns: 1fr;
+            }
+
+            .main-content {
+                grid-template-columns: 1fr;
+            }
+        }
+
+
+        @media (max-width: 600px) {
+
+            .dashboard-container {
+                padding: 14px 12px 30px;
+            }
+
+            nav {
+                padding: 12px 14px;
+            }
+
+            nav h2 {
+                font-size: 17px;
+            }
+
+            nav h2::before {
+                width: 30px;
+                height: 30px;
+
+                font-size: 15px;
+            }
+
+            #userDisplay {
+                display: none;
+            }
+
+            .logout-btn {
+                padding: 8px 12px;
+            }
+
+            .welcome h1 {
+                font-size: 23px;
+            }
+
+            .section {
+                padding: 18px;
+            }
+
+            .stat-card {
+                padding: 18px;
+            }
+        }
+
+
+        @media (max-width: 380px) {
+
+            .section {
+                padding: 15px;
+            }
+
+            .stat-card p {
+                font-size: 23px;
+            }
+
+            .welcome h1 {
+                font-size: 21px;
+            }
+        }
+
+        /* ===== PROFESSIONAL POLISH (added) ===== */
+
+        body {
+            -webkit-font-smoothing: antialiased;
+            -moz-osx-font-smoothing: grayscale;
+        }
+
+        .dashboard-container {
+            max-width: 1280px;
+        }
+
+        nav {
+            backdrop-filter: blur(18px);
+            -webkit-backdrop-filter: blur(18px);
+        }
+
+        .stat-card {
+            position: relative;
+            transition: transform 0.25s ease, box-shadow 0.25s ease, border-color 0.25s ease;
+        }
+
+        .stat-card:hover {
+            transform: translateY(-6px);
+            box-shadow: 0 20px 45px rgba(0,0,0,0.14);
+            border-color: rgba(53,196,119,0.35);
+        }
+
+        .stat-card p {
+            letter-spacing: -0.5px;
+        }
+
+        .section {
+            transition: box-shadow 0.25s ease, transform 0.25s ease;
+        }
+
+        .section:hover {
+            box-shadow: 0 16px 40px rgba(0,0,0,0.10);
+        }
+
+        .section form input,
+        .section form select {
+            transition: border-color 0.2s ease, box-shadow 0.2s ease, background 0.2s ease;
+        }
+
+        .section form input:focus,
+        .section form select:focus {
+            outline: none;
+            border-color: var(--green);
+            box-shadow: 0 0 0 4px rgba(53,196,119,0.14);
+            background: rgba(255,255,255,0.95);
+        }
+
+        body.night .section form input:focus,
+        body.night .section form select:focus {
+            background: rgba(0,0,0,0.4);
+        }
+
+        .section form button {
+            position: relative;
+            overflow: hidden;
+            letter-spacing: 0.3px;
+        }
+
+        .section form button:active {
+            transform: translateY(0);
+        }
+
+        .transaction-item,
+        .category-item,
+        .budget-item {
+            transition: background 0.2s ease, padding-left 0.2s ease;
+            border-radius: 10px;
+            padding: 10px 8px;
+        }
+
+        .transaction-item:hover,
+        .category-item:hover,
+        .budget-item:hover {
+            background: rgba(53,196,119,0.06);
+            padding-left: 12px;
+        }
+
+        body.night .transaction-item:hover,
+        body.night .category-item:hover,
+        body.night .budget-item:hover {
+            background: rgba(53,196,119,0.08);
+        }
+
+        .income, .expense {
+            font-variant-numeric: tabular-nums;
+        }
+
+        .stat-card p, #balance, #income, #expenses {
+            font-variant-numeric: tabular-nums;
+        }
+
+        .muted {
+            color: var(--muted);
+            font-style: italic;
+            font-size: 13px;
+            padding: 8px 4px;
+        }
+
+        /* smoother scrollbar */
+        #transactionList::-webkit-scrollbar {
+            width: 6px;
+        }
+
+        #transactionList::-webkit-scrollbar-thumb {
+            background: linear-gradient(180deg, #35c477, #147343);
+            border-radius: 10px;
+        }
+
+        /* empty state cards */
+        .section:has(.muted) {
+            min-height: 120px;
+        }
+
+        /* responsive tweaks */
+        @media (max-width: 900px) {
+            .main-content {
+                grid-template-columns: 1fr;
+            }
+            .stats {
+                grid-template-columns: repeat(2, 1fr);
+            }
+        }
+
+        @media (max-width: 520px) {
+            .stats {
+                grid-template-columns: 1fr;
+            }
+            nav {
+                flex-wrap: wrap;
+                gap: 10px;
+            }
+            .user-area {
+                width: 100%;
+                justify-content: space-between;
+            }
+        }
+
+        /* focus-visible for accessibility */
+        button:focus-visible,
+        input:focus-visible,
+        select:focus-visible {
+            outline: 2px solid var(--green);
+            outline-offset: 2px;
+        }
+
+        /* subtle fade-in for sections */
+        .section, .stat-card {
+            animation: fadeInUp 0.45s ease both;
+        }
+
+        @keyframes fadeInUp {
+            from { opacity: 0; transform: translateY(8px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        /* stagger */
+        .stat-card:nth-child(1) { animation-delay: 0.05s; }
+        .stat-card:nth-child(2) { animation-delay: 0.12s; }
+        .stat-card:nth-child(3) { animation-delay: 0.19s; }
+
+
+
+        </style>
+</head>
+
+<body>
+
+    <div class="dashboard-container">
+
+        <nav>
+
+            <h2>
+                Finance Tracker
+            </h2>
+
+            <div class="user-area">
+
+                <span id="userDisplay"></span>
+
+                <button
+                    onclick="logout()"
+                    class="logout-btn">
+
+                    Logout
+
+                </button>
+
+            </div>
+
+        </nav>
+        <div class="welcome">
+
+            <h1>
+                Financial Dashboard
+            </h1>
+
+            <p>
+                Manage your money, track expenses, and stay on budget.
+            </p>
+
+        </div>
+
+        <div class="stats">
+
+            <div class="stat-card">
+
+                <div class="stat-icon">
+                    ₱
+                </div>
+
+                <h3>
+                    Current Balance
+                </h3>
+
+                <p id="balance">
+                    ₱0.00
+                </p>
+
+            </div>
+
+
+            <div class="stat-card">
+
+                <div class="stat-icon">
+                    ↗
+                </div>
+
+                <h3>
+                    Total Income
+                </h3>
+
+                <p id="income">
+                    ₱0.00
+                </p>
+
+            </div>
+
+
+            <div class="stat-card">
+
+                <div class="stat-icon">
+                    ↘
+                </div>
+
+                <h3>
+                    Total Expenses
+                </h3>
+
+                <p id="expenses">
+                    ₱0.00
+                </p>
+
+            </div>
+
+        </div>
+
+
+        <!-- =========================
+             MAIN CONTENT
+        ========================== -->
+
+        <div class="main-content">
+
+
+            <!-- ADD TRANSACTION -->
+
+            <div class="section">
+
+                <div class="section-header">
+
+                    <div class="section-icon">
+                        ＋
+                    </div>
+
+                    <h3>
+                        Add Transaction
+                    </h3>
+
+                </div>
+
+
+                <form id="transactionForm">
+
+                    <select id="transType" required>
+
+                        <option value="Income">
+                            Income
+                        </option>
+
+                        <option value="Expense">
+                            Expense
+                        </option>
+
+                    </select>
+
+
+                    <select id="transCategory" required>
+
+                        <option value="">
+                            Select Category
+                        </option>
+
+                    </select>
+
+
+                    <input
+                        type="number"
+                        id="transAmount"
+                        placeholder="Amount"
+                        required
+                        step="0.01">
+
+
+                    <input
+                        type="text"
+                        id="transDesc"
+                        placeholder="Description">
+
+
+                    <input
+                        type="date"
+                        id="transDate">
+
+
+                    <button type="submit">
+                        Add Transaction
+                    </button>
+
+                </form>
+
+            </div>
+
+
+            <!-- ADD CATEGORY -->
+
+            <div class="section">
+
+                <div class="section-header">
+
+                    <div class="section-icon">
+                        ▦
+                    </div>
+
+                    <h3>
+                        Add Category
+                    </h3>
+
+                </div>
+
+
+                <form id="categoryForm">
+
+                    <input
+                        type="text"
+                        id="catName"
+                        placeholder="Category Name"
+                        required>
+
+
+                    <select id="catType" required>
+
+                        <option value="Income">
+                            Income
+                        </option>
+
+                        <option value="Expense">
+                            Expense
+                        </option>
+
+                    </select>
+
+
+                    <button type="submit">
+                        Add Category
+                    </button>
+
+                </form>
+
+
+                <h4>
+                    Your Categories
+                </h4>
+
+                <div id="categoryList"></div>
+
+            </div>
+
+
+            <!-- ADD BUDGET -->
+
+            <div class="section">
+
+                <div class="section-header">
+
+                    <div class="section-icon">
+                        ◉
+                    </div>
+
+                    <h3>
+                        Add Budget
+                    </h3>
+
+                </div>
+
+
+                <form id="budgetForm">
+
+                    <select id="budgetCategory" required>
+
+                        <option value="">
+                            Select Category
+                        </option>
+
+                    </select>
+
+
+                    <input
+                        type="number"
+                        id="budgetAmount"
+                        placeholder="Budget Amount"
+                        required
+                        step="0.01">
+
+
+                    <input
+                        type="number"
+                        id="budgetMonth"
+                        placeholder="Month (1-12)"
+                        required
+                        min="1"
+                        max="12">
+
+
+                    <input
+                        type="number"
+                        id="budgetYear"
+                        placeholder="Year"
+                        required
+                        min="2000">
+
+
+                    <button type="submit">
+                        Add Budget
+                    </button>
+
+                </form>
+
+
+                <h4>
+                    Your Budgets
+                </h4>
+
+                <div id="budgetList"></div>
+
+            </div>
+
+
+            <!-- RECENT TRANSACTIONS -->
+
+            <div class="section">
+
+                <div class="section-header">
+
+                    <div class="section-icon">
+                        ↔
+                    </div>
+
+                    <h3>
+                        Recent Transactions
+                    </h3>
+
+                </div>
+
+
+                <div id="transactionList"></div>
+
+            </div>
+
+        </div>
+
+    </div>
+
+
+    <script>
+
+
+        function updateTimeTheme() {
+
+            const hour = new Date().getHours();
+
+            const isNight =
+                hour >= 18 || hour < 6;
+
+            document.body.classList.toggle(
+                "night",
+                isNight
+            );
+        }
+
+        updateTimeTheme();
+
+        setInterval(
+            updateTimeTheme,
+            60000
+        );
+
+    </script>
+
+    <script src="../JS/config.js"></script>
+    <script src="../JS/auth.js"></script>
+    <script src="../JS/dashboard.js"></script>
+    <script src="../JS/app.js"></script>
+
+</body>
+</html>

@@ -1,0 +1,226 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ExpenseTracker - Register</title>
+    <!-- Cache-busting: Add version parameter -->
+    <link rel="stylesheet" href="/CSS/style2.css">
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>ExpenseTracker</h1>
+            <p>Track your spending, achieve your goals</p>
+        </div>
+
+        <div class="form-container active" id="registerForm">
+            <form id="registerFormElement" onsubmit="handleRegister(event)">
+                <div class="alert" id="registerAlert"></div>
+
+                <div class="form-group">
+                    <input type="text" id="regFullName" placeholder="Full name" required>
+                    <div class="error-message" id="regFullNameError">Please enter your full name.</div>
+                </div>
+
+                <div class="form-group">
+                    <input type="email" id="regEmail" placeholder="Email address" required>
+                    <div class="error-message" id="regEmailError">Please enter a valid email address.</div>
+                </div>
+
+                <div class="form-group">
+                    <select id="regCurrency" required>
+                        <option value="PHP" selected>PHP (Philippine Peso)</option>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <input type="number" id="regBudget" placeholder="Monthly budget (optional)" min="0">
+                </div>
+
+                <div class="form-group">
+                    <div class="input-wrapper">
+                        <input type="password" id="regPassword" placeholder="New password" required minlength="6">
+                        <button type="button" class="toggle-password" onclick="togglePassword('regPassword', this)">Show</button>
+                    </div>
+                    <div class="password-strength">
+                        <div class="bar" id="regPasswordStrengthBar"></div>
+                    </div>
+                    <div class="error-message" id="regPasswordError">Password must be at least 6 characters.</div>
+                </div>
+
+                <div class="form-group">
+                    <div class="input-wrapper">
+                        <input type="password" id="regConfirmPassword" placeholder="Confirm password" required minlength="6">
+                        <button type="button" class="toggle-password" onclick="togglePassword('regConfirmPassword', this)">Show</button>
+                    </div>
+                    <div class="error-message" id="regConfirmPasswordError">Passwords do not match.</div>
+                </div>
+
+                <button type="submit" class="btn-primary" id="registerBtn">Create Account</button>
+
+                <div class="form-footer">
+                    <span>Already have an account?</span>
+                    <a href="/">Log In</a>
+                </div>
+            </form>
+        </div>
+
+        <div class="security-badge">Your data is encrypted and secure</div>
+    </div>
+
+    <script>
+        // Toggle password visibility
+        function togglePassword(inputId, button) {
+            const input = document.getElementById(inputId);
+            if (input.type === 'password') {
+                input.type = 'text';
+                button.textContent = 'Hide';
+            } else {
+                input.type = 'password';
+                button.textContent = 'Show';
+            }
+        }
+
+        // Password strength checker
+        document.addEventListener('DOMContentLoaded', function() {
+            const passwordInput = document.getElementById('regPassword');
+            if (passwordInput) {
+                passwordInput.addEventListener('input', function() {
+                    const password = this.value;
+                    const bar = document.getElementById('regPasswordStrengthBar');
+                    
+                    let strength = 0;
+                    
+                    if (password.length >= 6) strength++;
+                    if (password.length >= 12) strength++;
+                    if (/[a-z]/.test(password) && /[A-Z]/.test(password)) strength++;
+                    if (/\d/.test(password)) strength++;
+                    if (/[^a-zA-Z0-9]/.test(password)) strength++;
+                    
+                    const percentage = Math.min((strength / 5) * 100, 100);
+                    
+                    bar.style.width = percentage + '%';
+                    bar.className = 'bar';
+                    
+                    if (percentage < 40) {
+                        bar.classList.add('weak');
+                    } else if (percentage < 70) {
+                        bar.classList.add('medium');
+                    } else {
+                        bar.classList.add('strong');
+                    }
+                    
+                    if (password.length === 0) {
+                        bar.style.width = '0%';
+                        bar.className = 'bar';
+                    }
+                });
+            }
+        });
+
+        // Handle registration
+        function handleRegister(event) {
+            event.preventDefault();
+            
+            const fullName = document.getElementById('regFullName');
+            const email = document.getElementById('regEmail');
+            const currency = document.getElementById('regCurrency');
+            const budget = document.getElementById('regBudget');
+            const password = document.getElementById('regPassword');
+            const confirmPassword = document.getElementById('regConfirmPassword');
+            
+            const fullNameError = document.getElementById('regFullNameError');
+            const emailError = document.getElementById('regEmailError');
+            const passwordError = document.getElementById('regPasswordError');
+            const confirmPasswordError = document.getElementById('regConfirmPasswordError');
+            const alert = document.getElementById('registerAlert');
+            
+            let isValid = true;
+            
+            // Reset errors
+            document.querySelectorAll('.form-group').forEach(el => el.classList.remove('error'));
+            document.querySelectorAll('.error-message').forEach(el => el.classList.remove('show'));
+            alert.classList.remove('show', 'alert-success', 'alert-error');
+            
+            // Validate full name
+            if (!fullName.value.trim() || fullName.value.trim().length < 2) {
+                fullName.closest('.form-group').classList.add('error');
+                fullNameError.textContent = 'Please enter your full name (minimum 2 characters).';
+                fullNameError.classList.add('show');
+                isValid = false;
+            }
+            
+            // Validate email
+            const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+            if (!email.value || !emailPattern.test(email.value)) {
+                email.closest('.form-group').classList.add('error');
+                emailError.classList.add('show');
+                isValid = false;
+            }
+            
+            // Validate password (minimum 6 characters)
+            if (!password.value || password.value.length < 6) {
+                password.closest('.form-group').classList.add('error');
+                passwordError.textContent = 'Password must be at least 6 characters.';
+                passwordError.classList.add('show');
+                isValid = false;
+            }
+            
+            // Validate confirm password
+            if (!confirmPassword.value || confirmPassword.value !== password.value) {
+                confirmPassword.closest('.form-group').classList.add('error');
+                confirmPasswordError.classList.add('show');
+                isValid = false;
+            }
+            
+            if (!isValid) {
+                alert.textContent = 'Please fix the errors above.';
+                alert.className = 'alert show alert-error';
+                return;
+            }
+            
+            // Show loading
+            alert.textContent = 'Creating your account...';
+            alert.className = 'alert show alert-success';
+            
+            // Prepare data for API
+            const userData = {
+                full_name: fullName.value.trim(),
+                email: email.value.trim(),
+                password: password.value,
+                currency: currency.value,
+                monthly_budget: budget.value ? parseFloat(budget.value) : 0
+            };
+            
+            // Call registration API
+            fetch('/api/register', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify(userData)
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.error) {
+                    alert.textContent = '❌ ' + data.error;
+                    alert.className = 'alert show alert-error';
+                } else {
+                    alert.textContent = '✅ ' + data.message + ' Redirecting to login...';
+                    alert.className = 'alert show alert-success';
+                    
+                    setTimeout(() => {
+                        window.location.href = '/';
+                    }, 1500);
+                }
+            })
+            .catch(error => {
+                alert.textContent = '❌ Registration failed. Please try again.';
+                alert.className = 'alert show alert-error';
+                console.error('Registration error:', error);
+            });
+        }
+    </script>
+</body>
+</html>

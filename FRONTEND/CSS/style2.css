@@ -1,0 +1,727 @@
+/* ==========================================
+   ExpenseTracker — Modern Registration UI
+   Clean • Compact • Responsive • Green
+   ========================================== */
+
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+:root {
+    --green-900: #123d2e;
+    --green-800: #165f3e;
+    --green-700: #197848;
+    --green-600: #29945f;
+    --green-500: #42ad76;
+
+    --text: #173c2e;
+    --muted: #708079;
+    --border: #d9e4df;
+    --border-hover: #b8cbc1;
+
+    --background: #edf5f0;
+    --white: #ffffff;
+
+    --danger: #d9534f;
+    --warning: #d5a83b;
+
+    --radius: 14px;
+}
+
+/* =========================
+   PAGE
+   ========================= */
+
+body {
+    min-height: 100vh;
+    font-family: Arial, Helvetica, sans-serif;
+    color: var(--text);
+
+    display: flex;
+    justify-content: center;
+    align-items: center;
+
+    padding: 24px;
+
+    background:
+        radial-gradient(
+            circle at 8% 10%,
+            rgba(66, 173, 118, 0.16),
+            transparent 28%
+        ),
+        radial-gradient(
+            circle at 92% 90%,
+            rgba(41, 148, 95, 0.13),
+            transparent 30%
+        ),
+        linear-gradient(
+            135deg,
+            #f7faf8 0%,
+            #e8f2ec 100%
+        );
+
+    position: relative;
+    overflow-x: hidden;
+}
+
+/* Decorative circles */
+
+body::before,
+body::after {
+    content: "";
+    position: fixed;
+    border-radius: 50%;
+    pointer-events: none;
+    z-index: 0;
+}
+
+body::before {
+    width: 480px;
+    height: 480px;
+    top: -260px;
+    right: -180px;
+    background: rgba(41, 148, 95, 0.09);
+}
+
+body::after {
+    width: 380px;
+    height: 380px;
+    bottom: -220px;
+    left: -160px;
+    background: rgba(66, 173, 118, 0.08);
+}
+
+/* =========================
+   MAIN CONTAINER
+   ========================= */
+
+.container {
+    width: 100%;
+    max-width: 500px;
+    position: relative;
+    z-index: 1;
+}
+
+/* =========================
+   HEADER
+   ========================= */
+
+.header {
+    text-align: center;
+    margin-bottom: 20px;
+}
+
+.header h1 {
+    color: var(--green-900);
+    font-size: 38px;
+    line-height: 1.1;
+    font-weight: 800;
+    letter-spacing: -1.5px;
+    margin-bottom: 7px;
+}
+
+.header h1::first-letter {
+    color: var(--green-600);
+}
+
+.header p {
+    color: var(--muted);
+    font-size: 14px;
+    line-height: 1.5;
+}
+
+/* =========================
+   FORM CARD
+   ========================= */
+
+.form-container {
+    width: 100%;
+    background: rgba(255, 255, 255, 0.96);
+
+    border: 1px solid rgba(255, 255, 255, 0.9);
+    border-radius: 20px;
+
+    padding: 30px;
+
+    box-shadow:
+        0 24px 60px rgba(25, 75, 55, 0.12),
+        0 6px 20px rgba(25, 75, 55, 0.06);
+
+    backdrop-filter: blur(14px);
+}
+
+.form-container.active {
+    display: block;
+}
+
+/* =========================
+   ALERT
+   ========================= */
+
+.alert {
+    display: none;
+
+    padding: 11px 13px;
+    margin-bottom: 15px;
+
+    border-radius: 10px;
+
+    font-size: 13px;
+    line-height: 1.4;
+}
+
+.alert.show {
+    display: block;
+}
+
+.alert-error {
+    background: #fff3f2;
+    border: 1px solid #ffd3d0;
+    color: #c0392b;
+}
+
+.alert-success {
+    background: #edfaf3;
+    border: 1px solid #b8e5ca;
+    color: #20864f;
+}
+
+/* =========================
+   FORM GROUP
+   ========================= */
+
+.form-group {
+    margin-bottom: 15px;
+}
+
+.form-group:last-of-type {
+    margin-bottom: 0;
+}
+
+/* Optional labels */
+
+.form-group label {
+    display: block;
+    margin-bottom: 6px;
+
+    color: #315447;
+    font-size: 13px;
+    font-weight: 600;
+}
+
+/* =========================
+   INPUTS
+   ========================= */
+
+.form-group input,
+.form-group select {
+    width: 100%;
+    height: 48px;
+
+    padding: 0 14px;
+
+    border: 1.5px solid var(--border);
+    border-radius: var(--radius);
+
+    background: #ffffff;
+    color: var(--text);
+
+    font-family: inherit;
+    font-size: 14px;
+
+    outline: none;
+
+    transition:
+        border-color 0.2s ease,
+        box-shadow 0.2s ease,
+        background 0.2s ease;
+}
+
+.form-group input::placeholder {
+    color: #9aa9a2;
+}
+
+/* Hover */
+
+.form-group input:hover,
+.form-group select:hover {
+    border-color: var(--border-hover);
+}
+
+/* Focus */
+
+.form-group input:focus,
+.form-group select:focus {
+    border-color: var(--green-600);
+
+    box-shadow:
+        0 0 0 3px rgba(41, 148, 95, 0.10);
+}
+
+/* =========================
+   SELECT
+   ========================= */
+
+.form-group select {
+    cursor: pointer;
+
+    appearance: none;
+
+    padding-right: 42px;
+
+    background-color: #fff;
+
+    background-image:
+        url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%236b7d75' stroke-width='1.5' fill='none' stroke-linecap='round'/%3E%3C/svg%3E");
+
+    background-repeat: no-repeat;
+    background-position: right 15px center;
+}
+
+.form-group select:disabled {
+    cursor: not-allowed;
+    background-color: #f5f8f6;
+    color: #91a099;
+}
+
+/* =========================
+   PASSWORD
+   ========================= */
+
+.input-wrapper {
+    position: relative;
+}
+
+.input-wrapper input {
+    padding-right: 70px;
+}
+
+.toggle-password {
+    position: absolute;
+
+    right: 10px;
+    top: 50%;
+
+    transform: translateY(-50%);
+
+    padding: 5px 7px;
+
+    border: none;
+    background: transparent;
+
+    color: var(--green-700);
+
+    font-size: 12px;
+    font-weight: 700;
+
+    cursor: pointer;
+}
+
+.toggle-password:hover {
+    color: var(--green-900);
+}
+
+/* =========================
+   PASSWORD STRENGTH
+   ========================= */
+
+.password-strength {
+    width: 100%;
+    height: 3px;
+
+    margin-top: 6px;
+
+    overflow: hidden;
+
+    background: #e5ece8;
+    border-radius: 20px;
+}
+
+.password-strength .bar {
+    width: 0;
+    height: 100%;
+
+    border-radius: inherit;
+
+    background: var(--green-600);
+
+    transition:
+        width 0.25s ease,
+        background 0.25s ease;
+}
+
+.password-strength .bar.weak {
+    width: 33%;
+    background: #dc5c5c;
+}
+
+.password-strength .bar.medium {
+    width: 66%;
+    background: var(--warning);
+}
+
+.password-strength .bar.strong {
+    width: 100%;
+    background: var(--green-600);
+}
+
+/* =========================
+   ERRORS
+   ========================= */
+
+.error-message {
+    display: none;
+
+    margin-top: 5px;
+    padding-left: 2px;
+
+    color: var(--danger);
+    font-size: 12px;
+}
+
+.error-message.show {
+    display: block;
+}
+
+.form-group.error input,
+.form-group.error select {
+    border-color: var(--danger);
+}
+
+.form-group.error input:focus,
+.form-group.error select:focus {
+    box-shadow:
+        0 0 0 3px rgba(217, 83, 79, 0.08);
+}
+
+/* =========================
+   CREATE ACCOUNT BUTTON
+   ========================= */
+
+.btn-primary {
+    width: 100%;
+    height: 49px;
+
+    margin-top: 17px;
+
+    border: none;
+    border-radius: var(--radius);
+
+    background:
+        linear-gradient(
+            135deg,
+            var(--green-600),
+            var(--green-700)
+        );
+
+    color: #ffffff;
+
+    font-family: inherit;
+    font-size: 15px;
+    font-weight: 700;
+
+    cursor: pointer;
+
+    box-shadow:
+        0 7px 18px rgba(41, 148, 95, 0.20);
+
+    transition:
+        transform 0.2s ease,
+        box-shadow 0.2s ease,
+        background 0.2s ease;
+}
+
+.btn-primary:hover {
+    transform: translateY(-2px);
+
+    background:
+        linear-gradient(
+            135deg,
+            #238753,
+            #12683e
+        );
+
+    box-shadow:
+        0 10px 24px rgba(41, 148, 95, 0.27);
+}
+
+.btn-primary:active {
+    transform: translateY(0);
+}
+
+.btn-primary:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+    transform: none;
+}
+
+/* =========================
+   FOOTER
+   ========================= */
+
+.form-footer {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 5px;
+
+    margin-top: 17px;
+
+    color: var(--muted);
+    font-size: 13px;
+}
+
+.form-footer a {
+    color: var(--green-700);
+
+    text-decoration: none;
+    font-weight: 700;
+
+    transition: color 0.2s ease;
+}
+
+.form-footer a:hover {
+    color: var(--green-900);
+    text-decoration: underline;
+}
+
+/* =========================
+   SECURITY BADGE
+   ========================= */
+
+.security-badge {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+
+    margin-top: 15px;
+
+    color: #71817a;
+    font-size: 11px;
+}
+
+.security-badge::before {
+    content: "✓";
+
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+
+    width: 18px;
+    height: 18px;
+
+    margin-right: 6px;
+
+    border-radius: 50%;
+
+    background: #dcefe4;
+    color: #238653;
+
+    font-size: 11px;
+    font-weight: 800;
+}
+
+/* =========================
+   NUMBER INPUT
+   ========================= */
+
+input[type="number"] {
+    appearance: textfield;
+}
+
+input[type="number"]::-webkit-inner-spin-button,
+input[type="number"]::-webkit-outer-spin-button {
+    opacity: 0.4;
+}
+
+/* =========================
+   TABLET / SMALL LAPTOP
+   ========================= */
+
+@media (max-height: 750px) and (min-width: 601px) {
+
+    body {
+        align-items: flex-start;
+        padding-top: 18px;
+        padding-bottom: 18px;
+    }
+
+    .header {
+        margin-bottom: 12px;
+    }
+
+    .header h1 {
+        font-size: 32px;
+        margin-bottom: 4px;
+    }
+
+    .form-container {
+        padding: 24px 28px;
+    }
+
+    .form-group {
+        margin-bottom: 11px;
+    }
+
+    .form-group input,
+    .form-group select {
+        height: 44px;
+    }
+
+    .btn-primary {
+        height: 46px;
+        margin-top: 13px;
+    }
+
+    .form-footer {
+        margin-top: 12px;
+    }
+
+    .security-badge {
+        margin-top: 10px;
+    }
+}
+
+/* =========================
+   MOBILE
+   ========================= */
+
+@media (max-width: 600px) {
+
+    body {
+        min-height: 100vh;
+        padding: 18px 14px;
+
+        align-items: flex-start;
+    }
+
+    .container {
+        max-width: 100%;
+        margin-top: 12px;
+        margin-bottom: 12px;
+    }
+
+    .header {
+        margin-bottom: 16px;
+    }
+
+    .header h1 {
+        font-size: 32px;
+        letter-spacing: -1px;
+    }
+
+    .header p {
+        font-size: 13px;
+    }
+
+    .form-container {
+        padding: 23px 20px;
+        border-radius: 18px;
+    }
+
+    .form-group {
+        margin-bottom: 13px;
+    }
+
+    .form-group input,
+    .form-group select {
+        height: 47px;
+        font-size: 14px;
+    }
+
+    .btn-primary {
+        height: 48px;
+        margin-top: 15px;
+    }
+}
+
+/* =========================
+   VERY SMALL PHONES
+   ========================= */
+
+@media (max-width: 380px) {
+
+    body {
+        padding: 12px 10px;
+    }
+
+    .container {
+        margin-top: 5px;
+    }
+
+    .header {
+        margin-bottom: 12px;
+    }
+
+    .header h1 {
+        font-size: 28px;
+    }
+
+    .header p {
+        font-size: 12px;
+    }
+
+    .form-container {
+        padding: 19px 16px;
+        border-radius: 16px;
+    }
+
+    .form-group {
+        margin-bottom: 10px;
+    }
+
+    .form-group input,
+    .form-group select {
+        height: 44px;
+        font-size: 13px;
+        border-radius: 11px;
+    }
+
+    .form-group label {
+        margin-bottom: 4px;
+        font-size: 12px;
+    }
+
+    .btn-primary {
+        height: 45px;
+        font-size: 14px;
+        margin-top: 12px;
+    }
+
+    .form-footer {
+        margin-top: 13px;
+        font-size: 12px;
+    }
+
+    .security-badge {
+        margin-top: 10px;
+        font-size: 10px;
+    }
+}
+
+/* =========================
+   ACCESSIBILITY
+   ========================= */
+
+button:focus-visible,
+input:focus-visible,
+select:focus-visible,
+a:focus-visible {
+    outline: 3px solid rgba(41, 148, 95, 0.25);
+    outline-offset: 2px;
+}
+
+/* =========================
+   REDUCED MOTION
+   ========================= */
+
+@media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+        transition: none !important;
+        animation: none !important;
+    }
+}
