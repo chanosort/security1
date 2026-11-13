@@ -413,29 +413,40 @@ def record_ip_failure(ip):
 # from .env.
 def captcha_ok(token, remote_ip=None):
     if not token:
+        log.warning("Turnstile verify failed: token is empty")
         return False
     secret = os.getenv('CAPTCHA_SECRET', '').strip()
     if not secret or secret.startswith('CHANGE_ME'):
-        log.error("CAPTCHA_SECRET not configured in .env")
+        log.error("CAPTCHA_SECRET not configured in .env or environment")
+        print("[CRITICAL] CAPTCHA_SECRET is missing! Please configure it in .env or Render Dashboard Environment Variables.")
         return False
     try:
-        data = urllib.parse.urlencode({
+        payload = {
             'secret': secret,
-            'response': token,
-            'remoteip': remote_ip or ''
-        }).encode()
+            'response': token
+        }
+        # Only attach remoteip if it is a non-empty, public IP address (Cloudflare rejects empty or private IPs)
+        if remote_ip and remote_ip not in ('127.0.0.1', 'localhost', '0.0.0.0') and not remote_ip.startswith('10.') and not remote_ip.startswith('192.168.') and not remote_ip.startswith('172.'):
+            payload['remoteip'] = remote_ip
+
+        data = urllib.parse.urlencode(payload).encode()
         req = urllib.request.Request(
             "https://challenges.cloudflare.com/turnstile/v0/siteverify",
             data=data,
-            method='POST'
+            method='POST',
+            headers={'User-Agent': 'ExpenseTracker-App/1.0'}
         )
         resp = urllib.request.urlopen(req, timeout=10)
         result = json.loads(resp.read().decode())
-        if not result.get('success'):
-            log.warning(f"Turnstile verify failed: {result.get('error-codes')}")
-        return bool(result.get('success'))
+        success = bool(result.get('success'))
+        if not success:
+            err_codes = result.get('error-codes', [])
+            log.warning(f"Turnstile verify failed: {err_codes}")
+            print(f"[TURNSTILE] Verify failed with error codes: {err_codes}")
+        return success
     except Exception as e:
         log.error(f"Turnstile verify request failed: {e}")
+        print(f"[TURNSTILE EXCEPTION] {e}")
         return False
 
 
@@ -551,7 +562,8 @@ def register():
     try:
         data = request.get_json(silent=True) or {}
 
-        if not captcha_ok(data.get('cf-turnstile-response'), client_ip()):
+        turnstile_token = data.get('cf-turnstile-response') or data.get('captcha')
+        if not captcha_ok(turnstile_token, client_ip()):
             log_event('CAPTCHA_FAILED', 'username', None, 'register')
             return jsonify({'error': 'CAPTCHA verification failed. Please try again.'}), 400
 
@@ -629,7 +641,7 @@ def register():
             return jsonify({'error': 'Please select a valid income bracket.'}), 400
 
         # Check existing accounts - allow unverified attempts to be replaced
-        existing_email = db.execute_query("SELECT user_id, verified FROM users WHERE email=%s", (email,))
+        existing_email = db.execute_query("SELECT user_id, verified FROM users WHERE LOWER(email)=LOWER(%s)", (email,))
         if existing_email:
             if existing_email[0]['verified']:
                 return jsonify({'error': 'This email is already registered.'}), 400
@@ -643,7 +655,7 @@ def register():
             else:
                 db.execute_query("DELETE FROM users WHERE user_id=%s", (existing_id[0]['user_id'],))
 
-        existing_user = db.execute_query("SELECT user_id, verified FROM users WHERE username=%s", (username,))
+        existing_user = db.execute_query("SELECT user_id, verified FROM users WHERE LOWER(username)=LOWER(%s)", (username,))
         if existing_user:
             if existing_user[0]['verified']:
                 return jsonify({'error': 'Username is already taken.'}), 400
@@ -796,8 +808,9 @@ def login():
 
         email = (data.get('email') or '').strip().lower()
         password = data.get('password') or ''
+        turnstile_token = data.get('cf-turnstile-response') or data.get('captcha')
 
-        if not captcha_ok(data.get('cf-turnstile-response'), ip):
+        if not captcha_ok(turnstile_token, ip):
             log_event('CAPTCHA_FAILED', 'email', None, 'login')
             return jsonify({'error': 'CAPTCHA verification failed. Please try again.'}), 400
 
@@ -1103,11 +1116,15 @@ def change_password():
 def username_available():
     u = (request.args.get('u') or '').strip()
     if not u:
-        return jsonify({'available': False})
-    if validate_username(u):
-        return jsonify({'available': False})
-    rows = db.execute_query("SELECT 1 FROM users WHERE username=%s", (u,))
-    return jsonify({'available': not bool(rows)})
+        return jsonify({'available': False, 'error': 'Username is required.'})
+    e = validate_username(u)
+    if e:
+        return jsonify({'available': False, 'error': e, 'invalid_format': True})
+    # Check verified accounts only - unverified attempts can be overwritten
+    rows = db.execute_query("SELECT 1 FROM users WHERE LOWER(username)=LOWER(%s) AND verified=TRUE", (u,))
+    if rows:
+        return jsonify({'available': False, 'taken': True, 'error': 'Username is already taken.'})
+    return jsonify({'available': True})
 
 
 @app.route('/api/categories', methods=['GET'])
@@ -1559,6 +1576,12 @@ if CSRF_AVAILABLE:
                     create_category, delete_category, create_transaction, update_transaction, delete_transaction,
                     create_budget, delete_budget]:
         csrf.exempt(view_fn)
+
+    # Initialize database tables if running for the first time
+    try:
+        db.init_db()
+    except Exception as _e:
+        log.warning(f"Initial DB setup note: {_e}")
 
 
 if __name__ == '__main__':
