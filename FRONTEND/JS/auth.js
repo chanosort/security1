@@ -32,9 +32,17 @@ function logout() {
     }
 }
 
+function authHeaders(extra) {
+    var headers = extra || {};
+    var token = getToken();
+    if (token) headers['Authorization'] = 'Bearer ' + token;
+    return headers;
+}
+
 window.getUser = getUser;
 window.getToken = getToken;
 window.isAuthenticated = isAuthenticated;
 window.saveAuthData = saveAuthData;
 window.clearAuthData = clearAuthData;
 window.logout = logout;
+window.authHeaders = authHeaders;

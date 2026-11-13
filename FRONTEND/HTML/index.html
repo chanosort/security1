@@ -2,9 +2,19 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Personal Expense Tracker</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, viewport-fit=cover">
+    <meta name="theme-color" content="#29945f">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="default">
+    <title>ExpenseTracker - Log In</title>
     <link rel="stylesheet" href="/CSS/style.css">
+    <script src="https://challenges.cloudflare.com/turnstile/v0/api.js" async defer></script>
+    <style>
+        /* Visually hides the required labels so your original placeholder design stays clean */
+        .form-group label {
+            display: none;
+        }
+    </style>
 </head>
 <body>
     <div class="container">
@@ -14,15 +24,18 @@
         </div>
 
         <div class="form-container active" id="loginForm">
-            <form id="loginFormElement" onsubmit="handleLogin(event)">
+            <!-- Step 1: Login credentials -->
+            <form id="loginFormElement" onsubmit="handleLogin(event)" novalidate>
                 <div class="alert" id="loginAlert"></div>
 
                 <div class="form-group">
+                    <label>Email Address</label>
                     <input type="email" id="loginEmail" placeholder="Email address" required>
                     <div class="error-message" id="loginEmailError">Please enter a valid email address.</div>
                 </div>
 
                 <div class="form-group">
+                    <label>Password</label>
                     <div class="input-wrapper">
                         <input type="password" id="loginPassword" placeholder="Password" required>
                         <button type="button" class="toggle-password" onclick="togglePassword('loginPassword', this)">Show</button>
@@ -30,24 +43,46 @@
                     <div class="error-message" id="loginPasswordError">Please enter your password.</div>
                 </div>
 
+                <!-- CAPTCHA (Cloudflare Turnstile) -->
+                <div style="display: flex; justify-content: center; margin-bottom: 22px;">
+                    <div class="cf-turnstile" data-sitekey="0x4AAAAAAF_IL4lF8k8fl4fi"></div>
+                </div>
+
                 <button type="submit" class="btn-primary" id="loginBtn">Log In</button>
+                
+                <div id="lockoutBanner" class="alert alert-error" style="display:none; margin-top: 15px;"></div>
 
                 <div class="form-footer">
-                    <a href="#" onclick="event.preventDefault(); alert('Password reset link will be sent.')">Forgot password?</a>
+                    <a href="#" id="forgotLink" onclick="event.preventDefault(); location.href='/HTML/forgot.html'">Forgot password?</a>
                     <span class="divider">|</span>
                     <a href="/HTML/registration.html">Create New Account</a>
                 </div>
             </form>
-        </div>
 
+            <!-- Step 2: OTP Verification (Handout Requirement) -->
+            <form id="otpForm" style="display:none" onsubmit="handleOtp(event)">
+                <div class="alert" id="otpAlert"></div>
+                <div class="form-group">
+                    <label>6-digit code</label>
+                    <input type="text" id="otpCode" placeholder="Enter 6-digit code from Gmail" maxlength="6" required>
+                </div>
+                <div id="loginOtpTimer" class="otp-timer" style="display:none; margin-bottom: 12px; font-size: 14px; color: var(--green-700, #20864f); font-weight: 600; text-align: center;">
+                    Code expires in: <span id="loginOtpCountdown">01:00</span>
+                </div>
+                <button type="submit" class="btn-primary" id="loginVerifyBtn">Verify Code</button>
+                <button type="button" class="btn-secondary" id="resendLoginOtpBtn" style="display:none; margin-top: 10px;" onclick="handleResendLoginOtp()">Resend Code</button>
+                <div class="form-footer" style="margin-top: 15px;">
+                    <a href="#" onclick="event.preventDefault(); document.getElementById('otpForm').style.display='none'; document.getElementById('loginFormElement').style.display='block';">Back to Log In</a>
+                </div>
+            </form>
+        </div>
+        
         <div class="security-badge">Your data is encrypted and secure</div>
     </div>
 
-    <!-- JavaScript Files -->
     <script src="/JS/config.js"></script>
     <script src="/JS/ui.js"></script>
     <script src="/JS/auth.js"></script>
     <script src="/JS/index.js"></script>
-    <script src="/JS/app.js"></script>
 </body>
 </html>

@@ -5,10 +5,13 @@
 document.addEventListener('keydown', function(e) {
     if (e.key === 'Enter') {
         var activeForm = document.querySelector('.form-container.active form');
-        if (activeForm) {
-            activeForm.dispatchEvent(new Event('submit'));
+        if (activeForm && document.activeElement && document.activeElement.tagName === 'INPUT') {
+            // Skip if active element is inside a multi-step flow form (handled inline)
+            if (!document.getElementById('otpForm') || document.getElementById('otpForm').style.display === 'none') {
+                activeForm.dispatchEvent(new Event('submit'));
+            }
         }
     }
 });
 
-console.log('Finance Tracker App Loaded');
+console.log('ExpenseTracker App Loaded');

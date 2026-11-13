@@ -41,7 +41,7 @@ body {
 
     display: flex;
     justify-content: center;
-    align-items: center;
+    align-items: flex-start;
 
     padding: 24px;
 
@@ -67,7 +67,6 @@ body {
 }
 
 /* Decorative circles */
-
 body::before,
 body::after {
     content: "";
@@ -99,9 +98,10 @@ body::after {
 
 .container {
     width: 100%;
-    max-width: 500px;
+    max-width: 540px;
     position: relative;
     z-index: 1;
+    margin-top: 10px;
 }
 
 /* =========================
@@ -189,8 +189,24 @@ body::after {
 }
 
 /* =========================
-   FORM GROUP
+   FORM GROUP & LABELS
    ========================= */
+
+.form-row {
+    display: flex;
+    gap: 12px;
+}
+
+.form-row .form-group {
+    flex: 1;
+}
+
+@media (max-width: 500px) {
+    .form-row {
+        flex-direction: column;
+        gap: 0;
+    }
+}
 
 .form-group {
     margin-bottom: 15px;
@@ -200,8 +216,7 @@ body::after {
     margin-bottom: 0;
 }
 
-/* Optional labels */
-
+/* Labels */
 .form-group label {
     display: block;
     margin-bottom: 6px;
@@ -209,6 +224,20 @@ body::after {
     color: #315447;
     font-size: 13px;
     font-weight: 600;
+}
+
+/* Asterisk & Optional text */
+.req {
+    color: var(--danger);
+    font-weight: 700;
+    margin-left: 2px;
+}
+
+.optional {
+    color: var(--danger);
+    font-size: 11px;
+    font-weight: 400;
+    margin-left: 4px;
 }
 
 /* =========================
@@ -243,14 +272,10 @@ body::after {
     color: #9aa9a2;
 }
 
-/* Hover */
-
 .form-group input:hover,
 .form-group select:hover {
     border-color: var(--border-hover);
 }
-
-/* Focus */
 
 .form-group input:focus,
 .form-group select:focus {
@@ -367,6 +392,12 @@ body::after {
     background: var(--green-600);
 }
 
+.strength-text {
+    margin-top: 4px;
+    font-size: 11px;
+    color: var(--muted);
+}
+
 /* =========================
    ERRORS
    ========================= */
@@ -397,7 +428,7 @@ body::after {
 }
 
 /* =========================
-   CREATE ACCOUNT BUTTON
+   BUTTONS
    ========================= */
 
 .btn-primary {
@@ -457,6 +488,38 @@ body::after {
     transform: none;
 }
 
+.btn-secondary {
+    width: 100%;
+    height: 46px;
+    margin-top: 10px;
+    border: 1.5px solid var(--green-600);
+    border-radius: var(--radius);
+    background: transparent;
+    color: var(--green-700);
+    font-size: 15px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.25s ease;
+}
+
+.btn-secondary:hover {
+    background: #eaf5ee;
+}
+
+.btn-secondary:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+}
+
+.otp-timer {
+    margin-top: 12px;
+    margin-bottom: 12px;
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--green-700);
+    text-align: center;
+}
+
 /* =========================
    FOOTER
    ========================= */
@@ -471,6 +534,7 @@ body::after {
 
     color: var(--muted);
     font-size: 13px;
+    flex-wrap: wrap;
 }
 
 .form-footer a {
@@ -485,6 +549,10 @@ body::after {
 .form-footer a:hover {
     color: var(--green-900);
     text-decoration: underline;
+}
+
+.divider {
+    color: #b5c1bb;
 }
 
 /* =========================
@@ -523,17 +591,68 @@ body::after {
     font-weight: 800;
 }
 
-/* =========================
-   NUMBER INPUT
-   ========================= */
+/* ==========================================
+   NEW ADDITIONS FOR HANDOUT REQUIREMENTS
+   ========================================== */
 
-input[type="number"] {
-    appearance: textfield;
+/* Fieldset for Security Questions */
+fieldset {
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 15px;
+    margin-bottom: 15px;
+    margin-top: 5px;
 }
 
-input[type="number"]::-webkit-inner-spin-button,
-input[type="number"]::-webkit-outer-spin-button {
-    opacity: 0.4;
+fieldset legend {
+    color: var(--green-700);
+    font-size: 13px;
+    font-weight: 700;
+    padding: 0 6px;
+}
+
+/* CAPTCHA Row */
+.captcha-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 8px;
+}
+
+.captcha-row img {
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    cursor: pointer;
+    height: 50px;
+    width: 160px;
+    object-fit: cover;
+    background: #071a10;
+}
+
+.captcha-row button {
+    height: 36px;
+    padding: 0 12px;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    background: #fff;
+    color: var(--green-700);
+    font-weight: 600;
+    font-size: 12px;
+    cursor: pointer;
+    transition: 0.2s;
+}
+
+.captcha-row button:hover {
+    background: #eef6f0;
+}
+
+/* Privacy Checkbox alignment */
+.form-group input[type="checkbox"] {
+    width: auto;
+    height: auto;
+    transform: scale(1.2);
+    cursor: pointer;
+    margin-right: 8px;
 }
 
 /* =========================
@@ -541,46 +660,31 @@ input[type="number"]::-webkit-outer-spin-button {
    ========================= */
 
 @media (max-height: 750px) and (min-width: 601px) {
-
     body {
         align-items: flex-start;
         padding-top: 18px;
         padding-bottom: 18px;
     }
-
     .header {
         margin-bottom: 12px;
     }
-
     .header h1 {
         font-size: 32px;
         margin-bottom: 4px;
     }
-
     .form-container {
         padding: 24px 28px;
     }
-
     .form-group {
         margin-bottom: 11px;
     }
-
     .form-group input,
     .form-group select {
         height: 44px;
     }
-
     .btn-primary {
         height: 46px;
         margin-top: 13px;
-    }
-
-    .form-footer {
-        margin-top: 12px;
-    }
-
-    .security-badge {
-        margin-top: 10px;
     }
 }
 
@@ -589,48 +693,38 @@ input[type="number"]::-webkit-outer-spin-button {
    ========================= */
 
 @media (max-width: 600px) {
-
     body {
         min-height: 100vh;
         padding: 18px 14px;
-
         align-items: flex-start;
     }
-
     .container {
         max-width: 100%;
         margin-top: 12px;
         margin-bottom: 12px;
     }
-
     .header {
         margin-bottom: 16px;
     }
-
     .header h1 {
         font-size: 32px;
         letter-spacing: -1px;
     }
-
     .header p {
         font-size: 13px;
     }
-
     .form-container {
         padding: 23px 20px;
         border-radius: 18px;
     }
-
     .form-group {
         margin-bottom: 13px;
     }
-
     .form-group input,
     .form-group select {
         height: 47px;
-        font-size: 14px;
+        font-size: 16px;
     }
-
     .btn-primary {
         height: 48px;
         margin-top: 15px;
@@ -642,59 +736,47 @@ input[type="number"]::-webkit-outer-spin-button {
    ========================= */
 
 @media (max-width: 380px) {
-
     body {
         padding: 12px 10px;
     }
-
     .container {
         margin-top: 5px;
     }
-
     .header {
         margin-bottom: 12px;
     }
-
     .header h1 {
         font-size: 28px;
     }
-
     .header p {
         font-size: 12px;
     }
-
     .form-container {
         padding: 19px 16px;
         border-radius: 16px;
     }
-
     .form-group {
         margin-bottom: 10px;
     }
-
     .form-group input,
     .form-group select {
         height: 44px;
         font-size: 13px;
         border-radius: 11px;
     }
-
     .form-group label {
         margin-bottom: 4px;
         font-size: 12px;
     }
-
     .btn-primary {
         height: 45px;
         font-size: 14px;
         margin-top: 12px;
     }
-
     .form-footer {
         margin-top: 13px;
         font-size: 12px;
     }
-
     .security-badge {
         margin-top: 10px;
         font-size: 10px;

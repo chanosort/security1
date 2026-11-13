@@ -2,10 +2,13 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, viewport-fit=cover">
+    <meta name="theme-color" content="#29945f">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="default">
     <title>ExpenseTracker - Register</title>
-    <!-- Cache-busting: Add version parameter -->
-    <link rel="stylesheet" href="/CSS/style2.css">
+    <link rel="stylesheet" href="../CSS/style2.css">
+    <script src="https://challenges.cloudflare.com/turnstile/v0/api.js" async defer></script>
 </head>
 <body>
     <div class="container">
@@ -15,53 +18,246 @@
         </div>
 
         <div class="form-container active" id="registerForm">
-            <form id="registerFormElement" onsubmit="handleRegister(event)">
+            <!-- Registration Form -->
+            <form id="registerFormElement" onsubmit="handleRegister(event)" novalidate>
                 <div class="alert" id="registerAlert"></div>
 
+                <!-- Honeypot (bot detection) -->
+                <input type="text" name="website" id="website" style="display:none !important;" tabindex="-1" autocomplete="off">
+
+                <!-- ID Number -->
                 <div class="form-group">
-                    <input type="text" id="regFullName" placeholder="Full name" required>
-                    <div class="error-message" id="regFullNameError">Please enter your full name.</div>
+                    <label for="regIdNumber">ID Number <span class="req">*</span></label>
+                    <input type="text" id="regIdNumber" placeholder="xxxx-xxxx (e.g. 1234-5678)" maxlength="9" required>
+                    <div class="error-message" id="regIdNumberError"></div>
+                </div>
+
+                <!-- First & Middle Name -->
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="regFirstName">First Name <span class="req">*</span></label>
+                        <input type="text" id="regFirstName" placeholder="e.g. Juan" maxlength="23" required>
+                        <div class="error-message" id="regFirstNameError"></div>
+                    </div>
+                    <div class="form-group">
+                        <label for="regMiddleName">Middle Name <span class="optional">(Optional)</span></label>
+                        <input type="text" id="regMiddleName" placeholder="e.g. Santos" maxlength="23">
+                        <div class="error-message" id="regMiddleNameError"></div>
+                    </div>
+                </div>
+
+                <!-- Family Name & Extension -->
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="regFamilyName">Family Name <span class="req">*</span></label>
+                        <input type="text" id="regFamilyName" placeholder="e.g. Dela Cruz" maxlength="23" required>
+                        <div class="error-message" id="regFamilyNameError"></div>
+                    </div>
+                    <div class="form-group">
+                        <label for="regNameExt">Extension <span class="optional">(Optional)</span></label>
+                        <select id="regNameExt">
+                            <option value="">None</option>
+                            <option value="Jr.">Jr.</option>
+                            <option value="Sr.">Sr.</option>
+                            <option value="II">II</option>
+                            <option value="III">III</option>
+                            <option value="IV">IV</option>
+                            <option value="Other">Other</option>
+                        </select>
+                        <input type="text" id="regNameExtOther" placeholder="Specify extension" style="display:none; margin-top:8px;" maxlength="10">
+                    </div>
+                </div>
+
+                <!-- Birthdate and Age -->
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="regBirthdate">Birthdate <span class="req">*</span></label>
+                        <input type="date" id="regBirthdate" required>
+                        <div class="error-message" id="regBirthdateError"></div>
+                    </div>
+                    <div class="form-group">
+                        <label for="regAge">Age (18+)</label>
+                        <input type="number" id="regAge" placeholder="Auto" readonly>
+                    </div>
+                </div>
+
+                <!-- Address: Purok & Barangay -->
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="regPurok">Purok / Street <span class="req">*</span></label>
+                        <input type="text" id="regPurok" placeholder="e.g. Purok 4" maxlength="50" required>
+                        <div class="error-message" id="regPurokError"></div>
+                    </div>
+                    <div class="form-group">
+                        <label for="regBarangay">Barangay <span class="req">*</span></label>
+                        <input type="text" id="regBarangay" placeholder="e.g. San Jose" maxlength="50" required>
+                        <div class="error-message" id="regBarangayError"></div>
+                    </div>
+                </div>
+
+                <!-- Address: Municipality & Province -->
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="regMunicipality">Municipality / City <span class="req">*</span></label>
+                        <input type="text" id="regMunicipality" placeholder="e.g. Antipolo" maxlength="50" required>
+                        <div class="error-message" id="regMunicipalityError"></div>
+                    </div>
+                    <div class="form-group">
+                        <label for="regProvince">Province <span class="req">*</span></label>
+                        <input type="text" id="regProvince" placeholder="e.g. Rizal" maxlength="50" required>
+                        <div class="error-message" id="regProvinceError"></div>
+                    </div>
+                </div>
+
+                <!-- Address: Region & Postal Code -->
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="regRegion">Region <span class="req">*</span></label>
+                        <input type="text" id="regRegion" placeholder="e.g. Region IV-A" maxlength="50" required>
+                        <div class="error-message" id="regRegionError"></div>
+                    </div>
+                    <div class="form-group">
+                        <label for="regPostal">Postal Code <span class="req">*</span></label>
+                        <input type="text" id="regPostal" placeholder="e.g. 1870" maxlength="10" required>
+                        <div class="error-message" id="regPostalError"></div>
+                    </div>
+                </div>
+
+                <!-- Account: Email & Username -->
+                <div class="form-group">
+                    <label for="regEmail">Email Address <span class="req">*</span></label>
+                    <input type="email" id="regEmail" placeholder="e.g. juan@example.com" maxlength="100" required>
+                    <div class="error-message" id="regEmailError"></div>
                 </div>
 
                 <div class="form-group">
-                    <input type="email" id="regEmail" placeholder="Email address" required>
-                    <div class="error-message" id="regEmailError">Please enter a valid email address.</div>
+                    <label for="regUsername">Username (7-19 characters, start with letter) <span class="req">*</span></label>
+                    <input type="text" id="regUsername" placeholder="e.g. juandelacruz1" maxlength="19" required>
+                    <div class="error-message" id="regUsernameError"></div>
                 </div>
 
+                <!-- Password -->
                 <div class="form-group">
-                    <select id="regCurrency" required>
-                        <option value="PHP" selected>PHP (Philippine Peso)</option>
-                    </select>
-                </div>
-
-                <div class="form-group">
-                    <input type="number" id="regBudget" placeholder="Monthly budget (optional)" min="0">
-                </div>
-
-                <div class="form-group">
+                    <label for="regPassword">Password (minimum 11 characters) <span class="req">*</span></label>
                     <div class="input-wrapper">
-                        <input type="password" id="regPassword" placeholder="New password" required minlength="6">
+                        <input type="password" id="regPassword" placeholder="New password" required minlength="11" maxlength="64">
                         <button type="button" class="toggle-password" onclick="togglePassword('regPassword', this)">Show</button>
                     </div>
                     <div class="password-strength">
                         <div class="bar" id="regPasswordStrengthBar"></div>
                     </div>
-                    <div class="error-message" id="regPasswordError">Password must be at least 6 characters.</div>
+                    <div class="strength-text" id="regPasswordStrengthText"></div>
+                    <div class="error-message" id="regPasswordError"></div>
                 </div>
 
+                <!-- Confirm Password -->
                 <div class="form-group">
+                    <label for="regConfirmPassword">Confirm Password <span class="req">*</span></label>
                     <div class="input-wrapper">
-                        <input type="password" id="regConfirmPassword" placeholder="Confirm password" required minlength="6">
+                        <input type="password" id="regConfirmPassword" placeholder="Confirm password" required minlength="11" maxlength="64">
                         <button type="button" class="toggle-password" onclick="togglePassword('regConfirmPassword', this)">Show</button>
                     </div>
-                    <div class="error-message" id="regConfirmPasswordError">Passwords do not match.</div>
+                    <div class="error-message" id="regConfirmPasswordError"></div>
+                </div>
+
+                <!-- Security Questions -->
+                <fieldset>
+                    <legend>Security Questions (Used for Password Recovery)</legend>
+                    <div class="form-group">
+                        <label for="regQ4">What is your mother's maiden first name? <span class="req">*</span></label>
+                        <input type="text" id="regQ4" placeholder="Your answer (2-50 characters)" maxlength="50" required>
+                        <div class="error-message" id="regQ4Error"></div>
+                    </div>
+                    <div class="form-group">
+                        <label for="regQ7">What was the name of your elementary school? <span class="req">*</span></label>
+                        <input type="text" id="regQ7" placeholder="Your answer (2-50 characters)" maxlength="50" required>
+                        <div class="error-message" id="regQ7Error"></div>
+                    </div>
+                    <div class="form-group">
+                        <label for="regQ1">What was the name of your first pet? <span class="req">*</span></label>
+                        <input type="text" id="regQ1" placeholder="Your answer (2-50 characters)" maxlength="50" required>
+                        <div class="error-message" id="regQ1Error"></div>
+                    </div>
+                </fieldset>
+
+                <!-- Financial / Cooperative Details -->
+                <div class="form-group">
+                    <label for="regTin">TIN Number (format xxx-xxx-xxx-xxx) <span class="req">*</span></label>
+                    <input type="text" id="regTin" placeholder="xxx-xxx-xxx-xxx" maxlength="15" required>
+                    <div class="error-message" id="regTinError"></div>
+                </div>
+
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="regIncome">Monthly Income Bracket <span class="req">*</span></label>
+                        <select id="regIncome" required>
+                            <option value="">Select Income Bracket</option>
+                            <option value="<10k">&lt; &#8369;10,000</option>
+                            <option value="10-20k">&#8369;10,000 - &#8369;20,000</option>
+                            <option value="20-50k">&#8369;20,000 - &#8369;50,000</option>
+                            <option value="50k+">&#8369;50,000+</option>
+                        </select>
+                        <div class="error-message" id="regIncomeError"></div>
+                    </div>
+                    <div class="form-group">
+                        <label for="regBudget">Monthly Budget (&#8369;) <span class="optional">(Optional)</span></label>
+                        <input type="number" id="regBudget" placeholder="e.g. 5000" min="0">
+                        <div class="error-message" id="regBudgetError"></div>
+                    </div>
+                </div>
+
+                <!-- CAPTCHA (Cloudflare Turnstile) -->
+                <div class="form-group">
+                    <label>Security Verification <span class="req">*</span></label>
+                    <div style="display: flex; justify-content: center;">
+                        <div class="cf-turnstile" data-sitekey="0x4AAAAAAF_IL4lF8k8fl4fi"></div>
+                    </div>
+                    <div class="error-message" id="regCaptchaError"></div>
+                </div>
+
+                <!-- Privacy Consent -->
+                <div class="form-group" style="margin-top: 15px;">
+                    <label style="font-weight: normal; cursor: pointer; display: flex; align-items: flex-start; gap: 8px;">
+                        <input type="checkbox" id="regConsent" required style="margin-top: 2px;">
+                        <span>I agree to the <a href="/HTML/privacy.html" target="_blank" style="color: var(--green-700); font-weight: 700;">Privacy Notice</a> under RA 10173 (Data Privacy Act of 2012) <span class="req">*</span></span>
+                    </label>
+                    <div class="error-message" id="regConsentError"></div>
                 </div>
 
                 <button type="submit" class="btn-primary" id="registerBtn">Create Account</button>
 
                 <div class="form-footer">
                     <span>Already have an account?</span>
-                    <a href="/">Log In</a>
+                    <a href="/HTML/index.html">Log In</a>
+                </div>
+            </form>
+
+            <!-- Verification Step (revealed after registration) -->
+            <form id="verifyFormElement" style="display:none;" onsubmit="handleVerifyOtp(event)" novalidate>
+                <div class="alert" id="verifyAlert"></div>
+
+                <div class="form-group">
+                    <label for="verifyEmail">Registered Email</label>
+                    <input type="email" id="verifyEmail" readonly>
+                </div>
+
+                <div class="form-group">
+                    <label for="verifyCode">6-Digit Verification Code <span class="req">*</span></label>
+                    <input type="text" id="verifyCode" placeholder="Enter 6-digit code" maxlength="6" required>
+                    <div class="error-message" id="verifyCodeError"></div>
+                </div>
+
+                <div class="otp-timer" id="otpTimer" style="display:none;">
+                    Code expires in: <span id="countdown">01:00</span>
+                </div>
+
+                <button type="submit" class="btn-primary" id="verifyBtn">Verify Account</button>
+                <button type="button" class="btn-secondary" id="resendOtpBtn" style="display:none;" onclick="handleResendOtp()">Resend Code</button>
+
+                <div class="form-footer">
+                    <a href="#" onclick="event.preventDefault(); document.getElementById('verifyFormElement').style.display='none'; document.getElementById('registerFormElement').style.display='block';">Back to Registration</a>
+                    <span class="divider">|</span>
+                    <a href="index.html">Log In</a>
                 </div>
             </form>
         </div>
@@ -69,158 +265,10 @@
         <div class="security-badge">Your data is encrypted and secure</div>
     </div>
 
-    <script>
-        // Toggle password visibility
-        function togglePassword(inputId, button) {
-            const input = document.getElementById(inputId);
-            if (input.type === 'password') {
-                input.type = 'text';
-                button.textContent = 'Hide';
-            } else {
-                input.type = 'password';
-                button.textContent = 'Show';
-            }
-        }
-
-        // Password strength checker
-        document.addEventListener('DOMContentLoaded', function() {
-            const passwordInput = document.getElementById('regPassword');
-            if (passwordInput) {
-                passwordInput.addEventListener('input', function() {
-                    const password = this.value;
-                    const bar = document.getElementById('regPasswordStrengthBar');
-                    
-                    let strength = 0;
-                    
-                    if (password.length >= 6) strength++;
-                    if (password.length >= 12) strength++;
-                    if (/[a-z]/.test(password) && /[A-Z]/.test(password)) strength++;
-                    if (/\d/.test(password)) strength++;
-                    if (/[^a-zA-Z0-9]/.test(password)) strength++;
-                    
-                    const percentage = Math.min((strength / 5) * 100, 100);
-                    
-                    bar.style.width = percentage + '%';
-                    bar.className = 'bar';
-                    
-                    if (percentage < 40) {
-                        bar.classList.add('weak');
-                    } else if (percentage < 70) {
-                        bar.classList.add('medium');
-                    } else {
-                        bar.classList.add('strong');
-                    }
-                    
-                    if (password.length === 0) {
-                        bar.style.width = '0%';
-                        bar.className = 'bar';
-                    }
-                });
-            }
-        });
-
-        // Handle registration
-        function handleRegister(event) {
-            event.preventDefault();
-            
-            const fullName = document.getElementById('regFullName');
-            const email = document.getElementById('regEmail');
-            const currency = document.getElementById('regCurrency');
-            const budget = document.getElementById('regBudget');
-            const password = document.getElementById('regPassword');
-            const confirmPassword = document.getElementById('regConfirmPassword');
-            
-            const fullNameError = document.getElementById('regFullNameError');
-            const emailError = document.getElementById('regEmailError');
-            const passwordError = document.getElementById('regPasswordError');
-            const confirmPasswordError = document.getElementById('regConfirmPasswordError');
-            const alert = document.getElementById('registerAlert');
-            
-            let isValid = true;
-            
-            // Reset errors
-            document.querySelectorAll('.form-group').forEach(el => el.classList.remove('error'));
-            document.querySelectorAll('.error-message').forEach(el => el.classList.remove('show'));
-            alert.classList.remove('show', 'alert-success', 'alert-error');
-            
-            // Validate full name
-            if (!fullName.value.trim() || fullName.value.trim().length < 2) {
-                fullName.closest('.form-group').classList.add('error');
-                fullNameError.textContent = 'Please enter your full name (minimum 2 characters).';
-                fullNameError.classList.add('show');
-                isValid = false;
-            }
-            
-            // Validate email
-            const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-            if (!email.value || !emailPattern.test(email.value)) {
-                email.closest('.form-group').classList.add('error');
-                emailError.classList.add('show');
-                isValid = false;
-            }
-            
-            // Validate password (minimum 6 characters)
-            if (!password.value || password.value.length < 6) {
-                password.closest('.form-group').classList.add('error');
-                passwordError.textContent = 'Password must be at least 6 characters.';
-                passwordError.classList.add('show');
-                isValid = false;
-            }
-            
-            // Validate confirm password
-            if (!confirmPassword.value || confirmPassword.value !== password.value) {
-                confirmPassword.closest('.form-group').classList.add('error');
-                confirmPasswordError.classList.add('show');
-                isValid = false;
-            }
-            
-            if (!isValid) {
-                alert.textContent = 'Please fix the errors above.';
-                alert.className = 'alert show alert-error';
-                return;
-            }
-            
-            // Show loading
-            alert.textContent = 'Creating your account...';
-            alert.className = 'alert show alert-success';
-            
-            // Prepare data for API
-            const userData = {
-                full_name: fullName.value.trim(),
-                email: email.value.trim(),
-                password: password.value,
-                currency: currency.value,
-                monthly_budget: budget.value ? parseFloat(budget.value) : 0
-            };
-            
-            // Call registration API
-            fetch('/api/register', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify(userData)
-            })
-            .then(response => response.json())
-            .then(data => {
-                if (data.error) {
-                    alert.textContent = '❌ ' + data.error;
-                    alert.className = 'alert show alert-error';
-                } else {
-                    alert.textContent = '✅ ' + data.message + ' Redirecting to login...';
-                    alert.className = 'alert show alert-success';
-                    
-                    setTimeout(() => {
-                        window.location.href = '/';
-                    }, 1500);
-                }
-            })
-            .catch(error => {
-                alert.textContent = '❌ Registration failed. Please try again.';
-                alert.className = 'alert show alert-error';
-                console.error('Registration error:', error);
-            });
-        }
-    </script>
+    <script src="../JS/config.js"></script>
+    <script src="../JS/ui.js"></script>
+    <script src="../JS/auth.js"></script>
+    <script src="../JS/validation.js"></script>
+    <script src="../JS/registration.js"></script>
 </body>
 </html>
