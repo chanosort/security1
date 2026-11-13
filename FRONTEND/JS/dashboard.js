@@ -1,25 +1,8 @@
 // ============================================
 // DASHBOARD.JS - Dashboard Page Logic
 // ============================================
-function escapeHtml(value) {
-    return String(value == null ? '' : value)
-        .replace(/&/g, '&amp;')
-        .replace(/</g, '&lt;')
-        .replace(/>/g, '&gt;')
-        .replace(/"/g, '&quot;')
-        .replace(/'/g, '&#39;');
-// Map of category_id -> category_type for auto-selecting transaction type
+
 window._categoryTypes = window._categoryTypes || {};
-
-}
-
-function authHeaders(extra) {
-    var headers = extra || {};
-    var token = getToken();
-    if (token) headers['Authorization'] = 'Bearer ' + token;
-    return headers;
-}
-
 
 function loadDashboard() {
     var user = getUser();
@@ -27,12 +10,13 @@ function loadDashboard() {
         window.location.href = '/HTML/index.html';
         return;
     }
-    
+
     var userDisplay = document.getElementById('userDisplay');
     if (userDisplay) {
-        userDisplay.textContent = 'Welcome, ' + user.full_name;
+        var display = user.first_name || user.full_name || user.username || user.email || '';
+        userDisplay.textContent = 'Welcome, ' + display;
     }
-    
+
     loadCategories();
     loadTransactions();
     loadBudgets();
@@ -41,20 +25,17 @@ function loadDashboard() {
 function loadCategories() {
     var token = getToken();
     if (!token) return;
-    
-    fetch(CONFIG.API_URL + '/categories', {
-        headers: authHeaders()
-    })
+
+    fetch(CONFIG.API_URL + '/categories', { headers: authHeaders() })
     .then(function(response) {
         if (!response.ok) throw new Error('Failed to load categories');
         return response.json();
     })
     .then(function(categories) {
-        // Remember category types for auto-selecting transaction type
         var map = {};
         categories.forEach(function(cat) { map[cat.category_id] = cat.category_type; });
         window._categoryTypes = map;
-        // Populate transaction category dropdown
+
         var select = document.getElementById('transCategory');
         if (select) {
             select.innerHTML = '<option value="">Select Category</option>';
@@ -65,8 +46,7 @@ function loadCategories() {
                 select.appendChild(opt);
             });
         }
-        
-        // Populate budget category dropdown
+
         var budgetSelect = document.getElementById('budgetCategory');
         if (budgetSelect) {
             budgetSelect.innerHTML = '<option value="">Select Category</option>';
@@ -77,8 +57,7 @@ function loadCategories() {
                 budgetSelect.appendChild(opt);
             });
         }
-        
-        // Display category list
+
         var categoryList = document.getElementById('categoryList');
         if (categoryList) {
             categoryList.innerHTML = '';
@@ -92,18 +71,14 @@ function loadCategories() {
             });
         }
     })
-    .catch(function(error) {
-        console.error('Error loading categories:', error);
-    });
+    .catch(function(error) { console.error('Error loading categories:', error); });
 }
 
 function loadTransactions() {
     var token = getToken();
     if (!token) return;
-    
-    fetch(CONFIG.API_URL + '/transactions', {
-        headers: authHeaders()
-    })
+
+    fetch(CONFIG.API_URL + '/transactions', { headers: authHeaders() })
     .then(function(response) {
         if (!response.ok) throw new Error('Failed to load transactions');
         return response.json();
@@ -111,64 +86,48 @@ function loadTransactions() {
     .then(function(transactions) {
         var list = document.getElementById('transactionList');
         if (!list) return;
-        
+
         list.innerHTML = '';
         if (!transactions || !transactions.length) {
             list.innerHTML = '<div class="transaction-item"><span class="muted">No transactions yet.</span></div>';
             var b0 = document.getElementById('balance');
             var i0 = document.getElementById('income');
             var e0 = document.getElementById('expenses');
-            if (b0) b0.textContent = '₱0.00';
-            if (i0) i0.textContent = '₱0.00';
-            if (e0) e0.textContent = '₱0.00';
+            if (b0) b0.textContent = '0.00';
+            if (i0) i0.textContent = '0.00';
+            if (e0) e0.textContent = '0.00';
             return;
         }
 
-        var totalIncome = 0;
-        var totalExpense = 0;
-        
+        var totalIncome = 0, totalExpense = 0;
         transactions.forEach(function(t) {
             var div = document.createElement('div');
             div.className = 'transaction-item';
-            
             var amount = parseFloat(t.amount);
-            if (t.transaction_type === 'Income') {
-                totalIncome += amount;
-            } else {
-                totalExpense += amount;
-            }
-            
-            // CHANGED $ TO ₱ HERE
-            var amountDisplay = (t.transaction_type === 'Income' ? '+' : '-') + '₱' + amount.toFixed(2);
+            if (t.transaction_type === 'Income') totalIncome += amount;
+            else totalExpense += amount;
+            var amountDisplay = (t.transaction_type === 'Income' ? '+' : '-') + ' ' + amount.toFixed(2);
             var amountClass = t.transaction_type.toLowerCase();
-            
             div.innerHTML = '<span>' + escapeHtml(t.description || t.transaction_type) + '</span>'
                 + '<span class="' + amountClass + '">' + escapeHtml(amountDisplay) + '</span>';
             list.appendChild(div);
         });
-        
-        // Update stats
+
         var balanceEl = document.getElementById('balance');
         var incomeEl = document.getElementById('income');
         var expenseEl = document.getElementById('expenses');
-        
-        // CHANGED $ TO ₱ HERE
-        if (balanceEl) balanceEl.textContent = '₱' + (totalIncome - totalExpense).toFixed(2);
-        if (incomeEl) incomeEl.textContent = '₱' + totalIncome.toFixed(2);
-        if (expenseEl) expenseEl.textContent = '₱' + totalExpense.toFixed(2);
+        if (balanceEl) balanceEl.textContent = (totalIncome - totalExpense).toFixed(2);
+        if (incomeEl) incomeEl.textContent = totalIncome.toFixed(2);
+        if (expenseEl) expenseEl.textContent = totalExpense.toFixed(2);
     })
-    .catch(function(error) {
-        console.error('Error loading transactions:', error);
-    });
+    .catch(function(error) { console.error('Error loading transactions:', error); });
 }
 
 function loadBudgets() {
     var token = getToken();
     if (!token) return;
-    
-    fetch(CONFIG.API_URL + '/budgets', {
-        headers: authHeaders()
-    })
+
+    fetch(CONFIG.API_URL + '/budgets', { headers: authHeaders() })
     .then(function(response) {
         if (!response.ok) throw new Error('Failed to load budgets');
         return response.json();
@@ -176,35 +135,27 @@ function loadBudgets() {
     .then(function(budgets) {
         var list = document.getElementById('budgetList');
         if (!list) return;
-        
         list.innerHTML = '';
         budgets.forEach(function(b) {
             var div = document.createElement('div');
             div.className = 'budget-item';
-            // CHANGED $ TO ₱ HERE
             var label = escapeHtml(b.category_name);
             if (b.month && b.year) {
                 label += ' <small>(' + escapeHtml(b.month) + '/' + escapeHtml(b.year) + ')</small>';
             }
             div.innerHTML = '<span>' + label + '</span>'
-                + '<span>₱' + parseFloat(b.amount).toFixed(2) + '</span>';
+                + '<span>' + parseFloat(b.amount).toFixed(2) + '</span>';
             list.appendChild(div);
         });
     })
-    .catch(function(error) {
-        console.error('Error loading budgets:', error);
-    });
+    .catch(function(error) { console.error('Error loading budgets:', error); });
 }
 
 function addTransaction(event) {
     event.preventDefault();
-    
     var token = getToken();
-    if (!token) {
-        alert('Please login first.');
-        return;
-    }
-    
+    if (!token) { alert('Please login first.'); return; }
+
     var data = {
         category_id: document.getElementById('transCategory').value,
         transaction_type: document.getElementById('transType').value,
@@ -212,12 +163,11 @@ function addTransaction(event) {
         description: document.getElementById('transDesc').value,
         transaction_date: document.getElementById('transDate').value || new Date().toISOString().split('T')[0]
     };
-    
+
     var btn = null;
     var formEl = document.getElementById('transactionForm');
     if (formEl) btn = formEl.querySelector('button[type="submit"]');
     if (btn) { btn.disabled = true; btn.textContent = 'Adding...'; }
-
 
     fetch(CONFIG.API_URL + '/transactions', {
         method: 'POST',
@@ -247,18 +197,14 @@ function addTransaction(event) {
 
 function addCategory(event) {
     event.preventDefault();
-    
     var token = getToken();
-    if (!token) {
-        alert('Please login first.');
-        return;
-    }
-    
+    if (!token) { alert('Please login first.'); return; }
+
     var data = {
         category_name: document.getElementById('catName').value,
         category_type: document.getElementById('catType').value
     };
-    
+
     fetch(CONFIG.API_URL + '/categories', {
         method: 'POST',
         headers: authHeaders({ 'Content-Type': 'application/json' }),
@@ -285,20 +231,16 @@ function addCategory(event) {
 
 function addBudget(event) {
     event.preventDefault();
-    
     var token = getToken();
-    if (!token) {
-        alert('Please login first.');
-        return;
-    }
-    
+    if (!token) { alert('Please login first.'); return; }
+
     var data = {
         category_id: document.getElementById('budgetCategory').value,
         amount: document.getElementById('budgetAmount').value,
         month: parseInt(document.getElementById('budgetMonth').value),
         year: parseInt(document.getElementById('budgetYear').value)
     };
-    
+
     fetch(CONFIG.API_URL + '/budgets', {
         method: 'POST',
         headers: authHeaders({ 'Content-Type': 'application/json' }),
@@ -328,13 +270,11 @@ document.addEventListener('DOMContentLoaded', function() {
         window.location.href = '/HTML/index.html';
         return;
     }
-    
+
     loadDashboard();
-    
+
     var transactionForm = document.getElementById('transactionForm');
-    if (transactionForm) {
-        transactionForm.addEventListener('submit', addTransaction);
-    }
+    if (transactionForm) transactionForm.addEventListener('submit', addTransaction);
 
     var transCategory = document.getElementById('transCategory');
     if (transCategory) {
@@ -344,16 +284,12 @@ document.addEventListener('DOMContentLoaded', function() {
             if (type && typeSelect) typeSelect.value = type;
         });
     }
-    
+
     var categoryForm = document.getElementById('categoryForm');
-    if (categoryForm) {
-        categoryForm.addEventListener('submit', addCategory);
-    }
-    
+    if (categoryForm) categoryForm.addEventListener('submit', addCategory);
+
     var budgetForm = document.getElementById('budgetForm');
-    if (budgetForm) {
-        budgetForm.addEventListener('submit', addBudget);
-    }
+    if (budgetForm) budgetForm.addEventListener('submit', addBudget);
 });
 
 window.loadDashboard = loadDashboard;

@@ -1,0 +1,18 @@
+# ── ADDED for handout Protection 11 ──
+# Private files
+.env
+*.env
+config.py
+config.py.bak
+
+# Python generated files
+__pycache__/
+*.pyc
+*.log
+error.log
+
+# Virtual environments
+venv/
+.venv/
+# NOTE: config.py stays tracked but must only read os.getenv().
+# Real secrets go in .env which is NEVER committed.

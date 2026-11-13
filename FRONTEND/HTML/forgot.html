@@ -1,0 +1,268 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, viewport-fit=cover">
+    <meta name="theme-color" content="#29945f">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="default">
+    <title>ExpenseTracker - Forgot Password</title>
+    <link rel="stylesheet" href="/CSS/style2.css">
+    <script src="https://challenges.cloudflare.com/turnstile/v0/api.js" async defer></script>
+    <style>
+        /* Hides labels to keep your original floating placeholder look */
+        .form-group label { display: none; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>ExpenseTracker</h1>
+            <p>Reset your password</p>
+        </div>
+
+        <div class="form-container active">
+            
+            <!-- Step 1: Identify -->
+            <div id="step1">
+                <div class="form-group">
+                    <label>Email or Username</label>
+                    <input type="text" id="identifier" placeholder="Email or Username" required>
+                </div>
+                
+                <div class="form-group" style="margin-bottom: 0;">
+                    <label>Security Check</label>
+                    <div style="display: flex; justify-content: center;">
+                        <div class="cf-turnstile" data-sitekey="0x4AAAAAAF_IL4lF8k8fl4fi"></div>
+                    </div>
+                </div>
+                
+                <button class="btn-primary" onclick="identify()">Continue</button>
+            </div>
+
+            <!-- Step 2: Questions -->
+            <div id="step2" style="display:none">
+                <p style="margin-bottom: 15px; font-size: 13px; color: #708079;">Answer all three questions exactly as typed at registration.</p>
+                <div id="questions"></div>
+                <button class="btn-primary" onclick="submitAnswers()">Verify Answers</button>
+            </div>
+
+            <!-- Step 3: OTP -->
+            <div id="step3" style="display:none">
+                <p style="margin-bottom: 15px; font-size: 13px; color: #708079;">A 6-digit reset code was sent to your Gmail address.</p>
+                <div class="form-group">
+                    <label>Reset Code</label>
+                    <input type="text" id="otpCode" placeholder="Enter 6-digit code from Gmail" maxlength="6" required autocomplete="off">
+                </div>
+                <div id="forgotTimer" style="margin-bottom: 15px; font-size: 14px; color: var(--green-700, #20864f); font-weight: 600; text-align: center;">
+                    Code expires in: <span id="forgotCountdown">01:00</span>
+                </div>
+                <button class="btn-primary" id="verifyOtpBtn" onclick="verifyOtp()">Verify Code</button>
+                <button type="button" class="btn-secondary" id="resendForgotOtpBtn" style="display:none; margin-top: 10px;" onclick="resendForgotOtp()">Resend Code</button>
+            </div>
+
+            <!-- Step 4: Change Password -->
+            <div id="step4" style="display:none">
+                <div class="form-group">
+                    <label>New Password</label>
+                    <input type="password" id="newPw" placeholder="New password" required>
+                </div>
+                <div class="form-group">
+                    <label>Re-enter Password</label>
+                    <input type="password" id="newPw2" placeholder="Confirm new password" required>
+                </div>
+                <button class="btn-primary" onclick="changePw()">Change Password</button>
+            </div>
+
+            <div class="alert" id="msg" style="margin-top: 15px;"></div>
+            
+            <div class="form-footer">
+                <a href="/">Back to Log In</a>
+            </div>
+        </div>
+        <div class="security-badge">Your data is encrypted and secure</div>
+    </div>
+
+    <script>
+        let ident='', resetToken='', changeToken='';
+        
+        function msg(t){ 
+            const el = document.getElementById('msg');
+            el.textContent = t; 
+            el.className = 'alert alert-error show';
+        }
+        
+        async function identify(){
+            ident = document.getElementById('identifier').value.trim();
+            const tokenInput = document.querySelector('[name="cf-turnstile-response"]');
+            const cap = tokenInput ? tokenInput.value : '';
+
+            if(!ident || !cap) { msg("Please complete the security check."); return; }
+
+            const r = await fetch('/api/forgot/identify',{method:'POST',headers:{'Content-Type':'application/json'},
+                body: JSON.stringify({identifier: ident, 'cf-turnstile-response': cap})});
+            const j = await r.json();
+            
+            if (!r.ok){ 
+                msg(j.error||'Error'); 
+                if (window.turnstile) window.turnstile.reset();
+                return; 
+            }
+            
+            const q = document.getElementById('questions');
+            q.innerHTML = '';
+            j.questions.forEach(x => {
+                q.innerHTML += `<div class="form-group"><label>${x.question_text}</label><input type="text" data-code="${x.question_code}" placeholder="${x.question_text}" required></div>`;
+            });
+            document.getElementById('step1').style.display='none';
+            document.getElementById('step2').style.display='block';
+            document.getElementById('msg').className = 'alert';
+        }
+        
+        async function submitAnswers(){
+            const answers = {};
+            document.querySelectorAll('#questions input').forEach(i => answers[i.dataset.code] = i.value);
+            
+            const r = await fetch('/api/forgot/answer',{method:'POST',headers:{'Content-Type':'application/json'},
+                body: JSON.stringify({identifier: ident, answers})});
+            const j = await r.json();
+            
+            if (!r.ok){ msg(j.error||'Error'); return; }
+            
+            resetToken = j.reset_token;
+            // Never pre-fill the OTP code - user must retrieve it from Gmail
+            const otpInput = document.getElementById('otpCode');
+            if (otpInput) otpInput.value = '';
+            document.getElementById('msg').className = 'alert alert-success show';
+            document.getElementById('msg').textContent = j.message;
+            document.getElementById('step2').style.display='none';
+            document.getElementById('step3').style.display='block';
+            if (otpInput) otpInput.focus();
+
+            startForgotTimer();
+        }
+
+        function startForgotTimer() {
+            let rem = 60;
+            const timerEl = document.getElementById('forgotTimer');
+            const countEl = document.getElementById('forgotCountdown');
+            const resendBtn = document.getElementById('resendForgotOtpBtn');
+            const verifyBtn = document.getElementById('verifyOtpBtn');
+
+            if (resendBtn) resendBtn.style.display = 'none';
+            if (verifyBtn) verifyBtn.disabled = false;
+            if (timerEl) {
+                timerEl.style.color = 'var(--green-700, #20864f)';
+                timerEl.innerHTML = 'Code expires in: <span id="forgotCountdown">01:00</span>';
+            }
+
+            if (window.forgotTimerInterval) clearInterval(window.forgotTimerInterval);
+            window.forgotTimerInterval = setInterval(() => {
+                rem--;
+                const mins = Math.floor(rem / 60);
+                const secs = rem % 60;
+                const formatted = (mins < 10 ? '0' : '') + mins + ':' + (secs < 10 ? '0' : '') + secs;
+                const currCountEl = document.getElementById('forgotCountdown');
+                if (currCountEl) currCountEl.textContent = formatted;
+
+                if (rem <= 0) {
+                    clearInterval(window.forgotTimerInterval);
+                    if (timerEl) {
+                        timerEl.innerHTML = '<span style="color: #c0392b; font-weight:700;">Code expired (1 min limit). Click Resend Code below.</span>';
+                    }
+                    if (resendBtn) resendBtn.style.display = 'block';
+                }
+            }, 1000);
+        }
+
+        async function resendForgotOtp(){
+            const resendBtn = document.getElementById('resendForgotOtpBtn');
+            if (resendBtn) {
+                resendBtn.disabled = true;
+                resendBtn.textContent = 'Sending new code...';
+            }
+            try {
+                const r = await fetch('/api/resend-forgot-otp', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({reset_token: resetToken})
+                });
+                const j = await r.json();
+                if (resendBtn) {
+                    resendBtn.disabled = false;
+                    resendBtn.textContent = 'Resend Code';
+                }
+                if (!r.ok) {
+                    msg(j.error || 'Failed to resend code.');
+                    if (resendBtn) resendBtn.style.display = 'block';
+                    return;
+                }
+                if (j.reset_token) resetToken = j.reset_token;
+                const otpInput = document.getElementById('otpCode');
+                if (otpInput) {
+                    otpInput.value = '';
+                    otpInput.focus();
+                }
+                document.getElementById('msg').className = 'alert alert-success show';
+                document.getElementById('msg').textContent = j.message || 'New verification code sent to your Gmail!';
+                startForgotTimer();
+            } catch(e) {
+                if (resendBtn) {
+                    resendBtn.disabled = false;
+                    resendBtn.textContent = 'Resend Code';
+                    resendBtn.style.display = 'block';
+                }
+                msg('Network error while requesting new code.');
+            }
+        }
+        
+        async function verifyOtp(){
+            const btn = document.getElementById('verifyOtpBtn');
+            if (btn) {
+                btn.disabled = true;
+                btn.textContent = 'Verifying...';
+            }
+            const r = await fetch('/api/forgot/verify',{method:'POST',headers:{'Content-Type':'application/json'},
+                body: JSON.stringify({reset_token: resetToken, code: document.getElementById('otpCode').value.trim()})});
+            const j = await r.json();
+            if (btn) {
+                btn.disabled = false;
+                btn.textContent = 'Verify Code';
+            }
+            
+            if (!r.ok){ 
+                msg(j.error||'Error');
+                // Always reveal Resend Code button if verification fails or code expired
+                const resendBtn = document.getElementById('resendForgotOtpBtn');
+                if (resendBtn) resendBtn.style.display = 'block';
+                return; 
+            }
+            
+            if (window.forgotTimerInterval) clearInterval(window.forgotTimerInterval);
+            changeToken = j.change_token;
+            document.getElementById('msg').className = 'alert alert-success show';
+            document.getElementById('msg').textContent = j.message;
+            document.getElementById('step3').style.display='none';
+            document.getElementById('step4').style.display='block';
+        }
+        
+        async function changePw(){
+            const r = await fetch('/api/change-password',{method:'POST',headers:{'Content-Type':'application/json'},
+                body: JSON.stringify({
+                    change_token: changeToken,
+                    password: document.getElementById('newPw').value,
+                    confirm_password: document.getElementById('newPw2').value
+                })});
+            const j = await r.json();
+            
+            if (r.ok) {
+                document.getElementById('msg').className = 'alert alert-success show';
+                document.getElementById('msg').textContent = j.message;
+                setTimeout(()=>location.href='/', 1500);
+            } else {
+                msg(j.error);
+            }
+        }
+    </script>
+</body>
+</html>
