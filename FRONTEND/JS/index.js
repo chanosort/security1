@@ -226,8 +226,19 @@ document.addEventListener('DOMContentLoaded', function() {
         window.location.href = '/HTML/dashboard.html';
     }
     document.querySelectorAll('.form-group input').forEach(function(input) {
+        input.addEventListener('input', function() {
+            if (this.value) {
+                this.classList.remove('error');
+                var err = document.getElementById(this.id + 'Error');
+                if (err) err.classList.remove('show');
+            }
+        });
         input.addEventListener('blur', function() {
-            if (this.value) this.classList.remove('error');
+            if (this.value) {
+                this.classList.remove('error');
+                var err = document.getElementById(this.id + 'Error');
+                if (err) err.classList.remove('show');
+            }
         });
     });
 });

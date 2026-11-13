@@ -1,0 +1,18 @@
+Applied pkgutil compatibility fix for Python 3.14
+Looking for frontend files in: c:\dev_projects\security1\FRONTEND
+FRONTEND exists: True
+Files in FRONTEND/HTML: ['dashboard.html', 'forgot.html', 'index.html', 'privacy.html', 'registration.html']
+============================================================
+Starting Expense Tracker API...
+============================================================
+Frontend folder: c:\dev_projects\security1\FRONTEND
+API available at: http://localhost:5000/api/
+Lab test: http://localhost:5000/lab_test
+============================================================
+MODE: PROTECTED (locked, seeded values active)
+Lockout tiers: 19/38/76 s
+OTP: 1 min | Idle: 9 min
+============================================================
+Connected to PostgreSQL successfully!
+ * Serving Flask app 'app'
+ * Debug mode: off

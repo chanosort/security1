@@ -118,7 +118,8 @@ function handleRegister(event) {
         income_bracket: document.getElementById('regIncome') ? document.getElementById('regIncome').value : '',
         monthly_budget: parseFloat(getVal('regBudget')) || 0,
         currency: 'PHP',
-        captcha: captchaEl ? captchaEl.value.trim() : '',
+        'cf-turnstile-response': turnstileToken,
+        captcha: turnstileToken || (captchaEl ? captchaEl.value.trim() : ''),
         consent: !!(consentEl && consentEl.checked)
     };
 
@@ -389,15 +390,30 @@ document.addEventListener('DOMContentLoaded', function() {
             var u = this.value.trim();
             if (!u || u.length < (CONFIG.MIN_USERNAME || 7)) return;
             fetch(CONFIG.API_URL + '/username-available?u=' + encodeURIComponent(u), { credentials: 'include' })
-                .then(function(r) { return r.json(); })
+                .then(function(r) {
+                    if (!r.ok) {
+                        return r.json().catch(function() { return {}; }).then(function(data) {
+                            return { isServerError: true, data: data };
+                        });
+                    }
+                    return r.json();
+                })
                 .then(function(j) {
                     var err = document.getElementById('regUsernameError');
-                    if (!err) return;
-                    if (!j.available) {
+                    if (!err || !j) return;
+                    if (j.isServerError) {
+                        // Server/database 500 error should NOT falsely flag username as taken
+                        return;
+                    }
+                    if (j.taken) {
                         uname.classList.add('error');
                         err.textContent = 'Username is already taken.';
                         err.classList.add('show');
-                    } else if (err.textContent === 'Username is already taken.') {
+                    } else if (j.error && j.invalid_format) {
+                        uname.classList.add('error');
+                        err.textContent = j.error;
+                        err.classList.add('show');
+                    } else if (j.available === true) {
                         uname.classList.remove('error');
                         err.classList.remove('show');
                         err.textContent = '';
