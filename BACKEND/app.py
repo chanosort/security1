@@ -576,11 +576,8 @@ def register():
             return jsonify({'error': 'You must agree to the Privacy Notice to register.'}), 400
 
         id_number = (data.get('id_number') or '').strip()
-        # id_number is no longer collected from the form; auto-generate a unique placeholder
-        if not id_number or not ID_RE.match(id_number):
-            import uuid
-            raw = uuid.uuid4().hex[:8].upper()
-            id_number = raw[:4] + '-' + raw[4:]
+        if not ID_RE.match(id_number):
+            return jsonify({'error': 'ID Number must follow the format xxxx-xxxx.'}), 400
 
         errs = []
         for field, label in [('first_name','First Name'),
@@ -652,6 +649,13 @@ def register():
                 return jsonify({'error': 'This email is already registered.'}), 400
             else:
                 db.execute_query("DELETE FROM users WHERE user_id=%s", (existing_email[0]['user_id'],))
+
+        existing_id = db.execute_query("SELECT user_id, verified FROM users WHERE id_number=%s", (id_number,))
+        if existing_id:
+            if existing_id[0]['verified']:
+                return jsonify({'error': 'This ID Number is already registered.'}), 400
+            else:
+                db.execute_query("DELETE FROM users WHERE user_id=%s", (existing_id[0]['user_id'],))
 
         existing_user = db.execute_query("SELECT user_id, verified FROM users WHERE LOWER(username)=LOWER(%s)", (username,))
         if existing_user:

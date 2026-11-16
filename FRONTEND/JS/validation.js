@@ -30,6 +30,9 @@ function validateField(id) {
     var msg = '';
 
     switch (id) {
+        case 'regIdNumber':
+            msg = ID_REGEX.test(input.value.trim()) ? '' : 'ID Number must follow the format xxxx-xxxx.';
+            break;
         case 'regFirstName':
             msg = validateNameField(input.value, 'First Name') || '';
             break;
