@@ -14,11 +14,11 @@ function handleRegister(event) {
 
     // All required field IDs (Turnstile CAPTCHA is validated separately)
     var requiredIds = [
-        'regIdNumber', 'regFirstName', 'regFamilyName', 'regBirthdate',
+        'regFirstName', 'regFamilyName', 'regBirthdate',
         'regPurok', 'regBarangay', 'regMunicipality', 'regProvince',
         'regRegion', 'regPostal', 'regEmail', 'regUsername',
         'regPassword', 'regConfirmPassword', 'regQ4', 'regQ7', 'regQ1',
-        'regTin', 'regIncome', 'regConsent'
+        'regIncome', 'regConsent'
     ];
 
     var valid = true;
@@ -93,7 +93,6 @@ function handleRegister(event) {
 
     var payload = {
         website: getVal('website'),
-        id_number: getVal('regIdNumber'),
         first_name: getVal('regFirstName'),
         middle_name: getVal('regMiddleName'),
         family_name: getVal('regFamilyName'),
@@ -114,7 +113,6 @@ function handleRegister(event) {
             Q7: getVal('regQ7'),
             Q1: getVal('regQ1')
         },
-        tin_number: getVal('regTin'),
         income_bracket: document.getElementById('regIncome') ? document.getElementById('regIncome').value : '',
         monthly_budget: parseFloat(getVal('regBudget')) || 0,
         currency: 'PHP',
@@ -361,8 +359,8 @@ document.addEventListener('DOMContentLoaded', function() {
 
     // Live validation
     var liveFields = [
-        'regIdNumber','regFirstName','regMiddleName','regFamilyName','regEmail',
-        'regUsername','regPassword','regConfirmPassword','regBirthdate','regTin',
+        'regFirstName','regMiddleName','regFamilyName','regEmail',
+        'regUsername','regPassword','regConfirmPassword','regBirthdate',
         'regPurok','regBarangay','regMunicipality','regProvince','regRegion',
         'regPostal','regIncome','regQ4','regQ7','regQ1','regConsent'
     ];
