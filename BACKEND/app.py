@@ -411,25 +411,36 @@ def record_ip_failure(ip):
 # token under the field name 'cf-turnstile-response'; we verify that token
 # server-side against Cloudflare's siteverify endpoint using CAPTCHA_SECRET
 # from .env.
+# DEBUG: set CAPTCHA_DEBUG=1 in .env (or Render env vars) to show the real
+# Cloudflare error in the login/register/forgot alert. REMOVE after fixing.
+CAPTCHA_DEBUG = os.getenv('CAPTCHA_DEBUG', '0') == '1'
+_captcha_last_error = {'detail': ''}   # last failure reason (for debug only)
+
+
 def captcha_ok(token, remote_ip=None):
-    # TEMPORARY DEBUG BYPASS
-    return True
+    _captcha_last_error['detail'] = ''
     if not token:
         log.warning("Turnstile verify failed: token is empty")
+        _captcha_last_error['detail'] = 'empty token (frontend did not send cf-turnstile-response)'
         return False
-    secret = os.getenv('CAPTCHA_SECRET', '').strip()
+    secret = os.getenv('CAPTCHA_SECRET', '').strip().strip('"').strip("'")
     if not secret or secret.startswith('CHANGE_ME'):
         log.error("CAPTCHA_SECRET not configured in .env or environment")
         print("[CRITICAL] CAPTCHA_SECRET is missing! Please configure it in .env or Render Dashboard Environment Variables.")
+        _captcha_last_error['detail'] = 'CAPTCHA_SECRET is missing on the server'
         return False
     try:
         payload = {
             'secret': secret,
             'response': token
         }
-        # Only attach remoteip if it is a non-empty, public IP address (Cloudflare rejects empty or private IPs)
-        if remote_ip and remote_ip not in ('127.0.0.1', 'localhost', '0.0.0.0') and not remote_ip.startswith('10.') and not remote_ip.startswith('192.168.') and not remote_ip.startswith('172.'):
+        # Only attach remoteip if it is a public IP (Cloudflare rejects private IPs)
+        if remote_ip and remote_ip not in ('127.0.0.1', 'localhost', '0.0.0.0', '::1') \
+                and not remote_ip.startswith(('10.', '192.168.', '172.')):
             payload['remoteip'] = remote_ip
+
+        print(f"[TURNSTILE DEBUG] secret_len={len(secret)} secret_prefix={secret[:8]} "
+              f"token_len={len(token)} remoteip={payload.get('remoteip')}")
 
         data = urllib.parse.urlencode(payload).encode()
         req = urllib.request.Request(
@@ -440,16 +451,27 @@ def captcha_ok(token, remote_ip=None):
         )
         resp = urllib.request.urlopen(req, timeout=10)
         result = json.loads(resp.read().decode())
+        print(f"[TURNSTILE DEBUG] Cloudflare response: {result}")
         success = bool(result.get('success'))
         if not success:
             err_codes = result.get('error-codes', [])
             log.warning(f"Turnstile verify failed: {err_codes}")
             print(f"[TURNSTILE] Verify failed with error codes: {err_codes}")
+            _captcha_last_error['detail'] = f"Cloudflare error codes: {err_codes} (hostname={result.get('hostname')})"
         return success
     except Exception as e:
         log.error(f"Turnstile verify request failed: {e}")
-        print(f"[TURNSTILE EXCEPTION] {e}")
+        print(f"[TURNSTILE EXCEPTION] {type(e).__name__}: {e}")
+        _captcha_last_error['detail'] = f"server could not reach Cloudflare: {type(e).__name__}: {e}"
         return False
+
+
+def captcha_fail_response():
+    """Same message as before; adds the real reason only when CAPTCHA_DEBUG=1."""
+    msg = 'CAPTCHA verification failed. Please try again.'
+    if CAPTCHA_DEBUG and _captcha_last_error['detail']:
+        msg += ' [DEBUG: ' + _captcha_last_error['detail'] + ']'
+    return jsonify({'error': msg}), 400
 
 
 @app.route('/test')
@@ -567,7 +589,7 @@ def register():
         turnstile_token = data.get('cf-turnstile-response') or data.get('captcha')
         if not captcha_ok(turnstile_token, client_ip()):
             log_event('CAPTCHA_FAILED', 'username', None, 'register')
-            return jsonify({'error': 'CAPTCHA verification failed. Please try again.'}), 400
+            return captcha_fail_response()
 
         if data.get('website'):
             return jsonify({'error': 'Registration failed.'}), 400
@@ -814,7 +836,7 @@ def login():
 
         if not captcha_ok(turnstile_token, ip):
             log_event('CAPTCHA_FAILED', 'email', None, 'login')
-            return jsonify({'error': 'CAPTCHA verification failed. Please try again.'}), 400
+            return captcha_fail_response()
 
         if not email or not password:
             return jsonify({'error': 'Missing email or password'}), 400
@@ -940,7 +962,7 @@ def forgot_identify():
     ident = (data.get('identifier') or '').strip().lower()
     if not captcha_ok(data.get('cf-turnstile-response'), client_ip()):
         log_event('CAPTCHA_FAILED', 'email', None, 'forgot')
-        return jsonify({'error': 'CAPTCHA verification failed. Please try again.'}), 400
+        return captcha_fail_response()
     rows = db.execute_query(
         "SELECT user_id FROM users WHERE email=%s OR username=%s", (ident, ident))
     if not rows:
