@@ -5,9 +5,13 @@
 // ============================================
 
 var apiOrigin = window.location.origin;
+// Use current origin for deployed environments (Render, etc.)
+// Fall back to localhost only when running directly from a file or local dev server on a different port
 if (!apiOrigin || apiOrigin === 'null' || apiOrigin.startsWith('file:') || apiOrigin.includes(':5500') || apiOrigin.includes(':3000')) {
     apiOrigin = 'http://localhost:5000';
 }
+// Strip trailing slash if any
+apiOrigin = apiOrigin.replace(/\/$/, '');
 
 var CONFIG = {
     // API base URL
