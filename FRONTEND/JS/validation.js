@@ -30,9 +30,6 @@ function validateField(id) {
     var msg = '';
 
     switch (id) {
-        case 'regIdNumber':
-            msg = ID_REGEX.test(input.value.trim()) ? '' : 'ID Number must follow the format xxxx-xxxx.';
-            break;
         case 'regFirstName':
             msg = validateNameField(input.value, 'First Name') || '';
             break;
@@ -75,11 +72,6 @@ function validateField(id) {
                 if (bd > t) msg = 'Birthdate cannot be in the future.';
                 else if (age < 18) msg = 'You must be at least 18 years old to register.';
             }
-            break;
-        case 'regTin':
-            if (!input.value.trim()) msg = 'TIN is required.';
-            else if (!TIN_REGEX.test(input.value.trim()))
-                msg = 'TIN must follow the format xxx-xxx-xxx-xxx.';
             break;
         case 'regPurok':
             if (!input.value.trim()) msg = 'Purok is required.';
