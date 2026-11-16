@@ -1296,6 +1296,12 @@
     <script src="../JS/auth.js"></script>
 
     <script>
+        // ── Auth guard: redirect to login if no token ──
+        (function() {
+            const tok = localStorage.getItem('token');
+            if (!tok) { window.location.href = '/HTML/index.html'; }
+        })();
+
         const dateInput = document.getElementById("transDate");
         const todayStr = new Date().toISOString().split("T")[0];
         if (dateInput && !dateInput.value) {
@@ -1401,10 +1407,22 @@
 
             const headers = { 'Authorization': 'Bearer ' + token };
             try {
+                // Helper: fetch JSON and handle 401 (expired/invalid token) by redirecting
+                async function apiFetch(url, opts) {
+                    const res = await fetch(url, opts);
+                    if (res.status === 401) {
+                        if (typeof clearAuthData === 'function') clearAuthData();
+                        else { localStorage.removeItem('token'); localStorage.removeItem('user'); }
+                        window.location.href = '/HTML/index.html';
+                        throw new Error('Session expired. Redirecting to login.');
+                    }
+                    return res.ok ? res.json() : [];
+                }
+
                 const [catsRes, txRes, bgRes] = await Promise.all([
-                    fetch(CONFIG.API_URL + '/categories', { headers }).then(r => r.ok ? r.json() : []),
-                    fetch(CONFIG.API_URL + '/transactions', { headers }).then(r => r.ok ? r.json() : []),
-                    fetch(CONFIG.API_URL + '/budgets', { headers }).then(r => r.ok ? r.json() : [])
+                    apiFetch(CONFIG.API_URL + '/categories', { headers }),
+                    apiFetch(CONFIG.API_URL + '/transactions', { headers }),
+                    apiFetch(CONFIG.API_URL + '/budgets', { headers })
                 ]);
 
                 liveData.categories = Array.isArray(catsRes) ? catsRes : [];
@@ -1732,6 +1750,12 @@
                         body: JSON.stringify(payload)
                     });
                     const data = await res.json();
+                    if (res.status === 401) {
+                        if (typeof clearAuthData === 'function') clearAuthData();
+                        else { localStorage.removeItem('token'); localStorage.removeItem('user'); }
+                        window.location.href = '/HTML/index.html';
+                        return;
+                    }
                     if (!res.ok) {
                         alert(data.error || "Failed to save transaction.");
                         if (btn) { btn.disabled = false; btn.textContent = 'Save'; }
@@ -1770,6 +1794,12 @@
                         body: JSON.stringify({ category_name: name, category_type: type })
                     });
                     const data = await res.json();
+                    if (res.status === 401) {
+                        if (typeof clearAuthData === 'function') clearAuthData();
+                        else { localStorage.removeItem('token'); localStorage.removeItem('user'); }
+                        window.location.href = '/HTML/index.html';
+                        return;
+                    }
                     if (!res.ok) {
                         alert(data.error || "Failed to add category.");
                         if (btn) { btn.disabled = false; btn.textContent = 'Add Category'; }
@@ -1820,6 +1850,12 @@
                         body: JSON.stringify(payload)
                     });
                     const data = await res.json();
+                    if (res.status === 401) {
+                        if (typeof clearAuthData === 'function') clearAuthData();
+                        else { localStorage.removeItem('token'); localStorage.removeItem('user'); }
+                        window.location.href = '/HTML/index.html';
+                        return;
+                    }
                     if (!res.ok) {
                         alert(data.error || "Failed to add budget.");
                         if (btn) { btn.disabled = false; btn.textContent = 'Add Budget'; }

@@ -17,10 +17,14 @@ class Config:
     JWT_SECRET = os.getenv('JWT_SECRET', '')
     JWT_EXPIRY = 7  # days
 
-    # CORS configuration
-    CORS_ORIGINS = ['http://localhost:3000', 'http://127.0.0.1:3000',
-                    'http://localhost:5500', 'http://localhost:5000',
-                    'http://127.0.0.1:5000']
+    # CORS configuration - includes Render deployment URL
+    _extra_origins = [o.strip() for o in os.getenv('CORS_EXTRA_ORIGINS', '').split(',') if o.strip()]
+    CORS_ORIGINS = [
+        'http://localhost:3000', 'http://127.0.0.1:3000',
+        'http://localhost:5500', 'http://localhost:5000',
+        'http://127.0.0.1:5000',
+        'https://security1-1x1k.onrender.com',
+    ] + _extra_origins
 
     # ── ADDED: seed values (Student ID ends 43 → D1=4, D2=3) ──
     MIN_USERNAME          = 7    # 6 + (D1 mod 3)
