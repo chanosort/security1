@@ -36,10 +36,13 @@ function updatePasswordStrength() {
 
     var score = 0;
     if (password.length >= CONFIG.MIN_PASSWORD) score++;
-    if (password.length >= 14) score++;
+    if (password.length >= 12) score++;
     if (/[a-z]/.test(password) && /[A-Z]/.test(password)) score++;
     if (/[0-9]/.test(password)) score++;
     if (/[^a-zA-Z0-9]/.test(password)) score++;
+
+    var charTypes = (/[a-zA-Z]/.test(password) ? 1 : 0) + (/[0-9]/.test(password) ? 1 : 0) + (/[^a-zA-Z0-9]/.test(password) ? 1 : 0);
+    if (charTypes < 2) score = 1;
 
     var percentage = Math.min((score / 5) * 100, 100);
     bar.style.width = percentage + '%';

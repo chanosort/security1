@@ -17,9 +17,14 @@ function handleRegister(event) {
         'regIdNumber', 'regFirstName', 'regFamilyName', 'regBirthdate',
         'regPurok', 'regBarangay', 'regMunicipality', 'regProvince',
         'regRegion', 'regPostal', 'regEmail', 'regUsername',
-        'regPassword', 'regConfirmPassword', 'regQ4', 'regQ7', 'regQ1',
+        'regPassword', 'regConfirmPassword',
         'regIncome', 'regConsent'
     ];
+    if (document.getElementById('regAnswer1')) {
+        requiredIds.push('regAnswer1', 'regAnswer2', 'regAnswer3');
+    } else {
+        requiredIds.push('regQ4', 'regQ7', 'regQ1');
+    }
 
     var valid = true;
     requiredIds.forEach(function(id) {
@@ -66,6 +71,19 @@ function handleRegister(event) {
         return;
     }
 
+    var strText = document.getElementById('regPasswordStrengthText');
+    if (strText && strText.textContent === 'Weak') {
+        showAlert('registerAlert', 'Password is too weak. Weak passwords cannot be submitted.', 'error');
+        var pwd = document.getElementById('regPassword');
+        if (pwd) pwd.classList.add('error');
+        var errEl = document.getElementById('regPasswordError');
+        if (errEl) {
+            errEl.textContent = 'Password is too weak. Please include uppercase letters, numbers, or symbols.';
+            errEl.classList.add('show');
+        }
+        return;
+    }
+
     // Name extension
     var nameExtEl = document.getElementById('regNameExt');
     var nameExtSel = nameExtEl ? nameExtEl.value : '';
@@ -91,6 +109,26 @@ function handleRegister(event) {
         return;
     }
 
+    // Verify security questions are distinct
+    var q1 = document.getElementById('regQSelect1') ? document.getElementById('regQSelect1').value : 'Q1';
+    var q2 = document.getElementById('regQSelect2') ? document.getElementById('regQSelect2').value : 'Q2';
+    var q3 = document.getElementById('regQSelect3') ? document.getElementById('regQSelect3').value : 'Q3';
+    if (document.getElementById('regQSelect1') && (q1 === q2 || q1 === q3 || q2 === q3)) {
+        showAlert('registerAlert', 'Please select 3 different security questions.', 'error');
+        return;
+    }
+
+    var answersPayload = {};
+    if (document.getElementById('regAnswer1')) {
+        answersPayload[q1] = getVal('regAnswer1');
+        answersPayload[q2] = getVal('regAnswer2');
+        answersPayload[q3] = getVal('regAnswer3');
+    } else {
+        answersPayload['Q4'] = getVal('regQ4');
+        answersPayload['Q7'] = getVal('regQ7');
+        answersPayload['Q1'] = getVal('regQ1');
+    }
+
     var payload = {
         website: getVal('website'),
         id_number: getVal('regIdNumber'),
@@ -109,11 +147,7 @@ function handleRegister(event) {
         username: getVal('regUsername'),
         password: document.getElementById('regPassword') ? document.getElementById('regPassword').value : '',
         confirm_password: document.getElementById('regConfirmPassword') ? document.getElementById('regConfirmPassword').value : '',
-        answers: {
-            Q4: getVal('regQ4'),
-            Q7: getVal('regQ7'),
-            Q1: getVal('regQ1')
-        },
+        answers: answersPayload,
         income_bracket: document.getElementById('regIncome') ? document.getElementById('regIncome').value : '',
         monthly_budget: parseFloat(getVal('regBudget')) || 0,
         currency: 'PHP',
@@ -177,12 +211,12 @@ function handleRegister(event) {
                 codeInput.focus();
             }
 
-            var successMsg = data.message || 'Registration successful. A verification code has been sent to your Gmail (expires in 1 min). Please check your email and enter the code below.';
+            var successMsg = data.message || 'Registration successful. A verification code has been sent to your Gmail (expires in 5 min). Please check your email and enter the code below.';
             showAlert('verifyAlert', successMsg, 'success');
             verifyForm.scrollIntoView({ behavior: 'smooth', block: 'start' });
 
-            // Start 1-minute countdown timer
-            startOtpTimer(60);
+            // Start 5-minute countdown timer (OTP expiry: 5 minutes per professor's announcement)
+            startOtpTimer(CONFIG.OTP_EXPIRY_MINUTES * 60);
         } else {
             showAlert('registerAlert', data.message || 'Registration successful. Check your email for verification code.', 'success');
         }
@@ -201,7 +235,7 @@ function handleRegister(event) {
 
 function startOtpTimer(durationSeconds) {
     if (otpTimerInterval) clearInterval(otpTimerInterval);
-    var remaining = durationSeconds || 60;
+    var remaining = durationSeconds || (CONFIG.OTP_EXPIRY_MINUTES * 60) || 300;
     var timerEl = document.getElementById('otpTimer');
     var resendBtn = document.getElementById('resendOtpBtn');
     var verifyBtn = document.getElementById('verifyBtn');
@@ -224,7 +258,7 @@ function startOtpTimer(durationSeconds) {
         if (remaining <= 0) {
             clearInterval(otpTimerInterval);
             if (timerEl) {
-                timerEl.innerHTML = '<span style="color: #c0392b; font-weight: 700;">Verification code expired (1 minute passed). Please request a new code.</span>';
+                timerEl.innerHTML = '<span style="color: #c0392b; font-weight: 700;">Verification code expired (5 minutes passed). Please request a new code.</span>';
             }
             if (resendBtn) resendBtn.style.display = 'block';
         }
@@ -268,9 +302,9 @@ function handleResendOtp() {
             codeInput.value = ''; // Always empty - user must check Gmail
             codeInput.focus();
         }
-        var msg = data.message || 'New verification code sent to your Gmail! It will expire in 1 minute.';
+        var msg = data.message || 'New verification code sent to your Gmail! It will expire in 5 minutes.';
         showAlert('verifyAlert', msg, 'success');
-        startOtpTimer(60);
+        startOtpTimer(CONFIG.OTP_EXPIRY_MINUTES * 60);
     })
     .catch(function(err) {
         if (resendBtn) {

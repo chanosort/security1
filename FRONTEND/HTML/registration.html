@@ -36,12 +36,12 @@
                 <div class="form-row">
                     <div class="form-group">
                         <label for="regFirstName">First Name <span class="req">*</span></label>
-                        <input type="text" id="regFirstName" placeholder="e.g. Juan" maxlength="23" required>
+                        <input type="text" id="regFirstName" placeholder="e.g. Juan" maxlength="50" required>
                         <div class="error-message" id="regFirstNameError"></div>
                     </div>
                     <div class="form-group">
                         <label for="regMiddleName">Middle Name <span class="optional">(Optional)</span></label>
-                        <input type="text" id="regMiddleName" placeholder="e.g. Santos" maxlength="23">
+                        <input type="text" id="regMiddleName" placeholder="e.g. Santos" maxlength="50">
                         <div class="error-message" id="regMiddleNameError"></div>
                     </div>
                 </div>
@@ -50,7 +50,7 @@
                 <div class="form-row">
                     <div class="form-group">
                         <label for="regFamilyName">Family Name <span class="req">*</span></label>
-                        <input type="text" id="regFamilyName" placeholder="e.g. Dela Cruz" maxlength="23" required>
+                        <input type="text" id="regFamilyName" placeholder="e.g. Dela Cruz" maxlength="50" required>
                         <div class="error-message" id="regFamilyNameError"></div>
                     </div>
                     <div class="form-group">
@@ -131,16 +131,16 @@
                 </div>
 
                 <div class="form-group">
-                    <label for="regUsername">Username (7-19 characters, start with letter) <span class="req">*</span></label>
-                    <input type="text" id="regUsername" placeholder="e.g. juandelacruz1" maxlength="19" required>
+                    <label for="regUsername">Username (6-20 characters, start with letter) <span class="req">*</span></label>
+                    <input type="text" id="regUsername" placeholder="e.g. juandelacruz1" maxlength="20" required>
                     <div class="error-message" id="regUsernameError"></div>
                 </div>
 
                 <!-- Password -->
                 <div class="form-group">
-                    <label for="regPassword">Password (minimum 11 characters) <span class="req">*</span></label>
+                    <label for="regPassword">Password (minimum 8 characters) <span class="req">*</span></label>
                     <div class="input-wrapper">
-                        <input type="password" id="regPassword" placeholder="New password" required minlength="11" maxlength="64">
+                        <input type="password" id="regPassword" placeholder="New password" required minlength="8" maxlength="64">
                         <button type="button" class="toggle-password" onclick="togglePassword('regPassword', this)">Show</button>
                     </div>
                     <div class="password-strength">
@@ -154,29 +154,59 @@
                 <div class="form-group">
                     <label for="regConfirmPassword">Confirm Password <span class="req">*</span></label>
                     <div class="input-wrapper">
-                        <input type="password" id="regConfirmPassword" placeholder="Confirm password" required minlength="11" maxlength="64">
+                        <input type="password" id="regConfirmPassword" placeholder="Confirm password" required minlength="8" maxlength="64">
                         <button type="button" class="toggle-password" onclick="togglePassword('regConfirmPassword', this)">Show</button>
                     </div>
                     <div class="error-message" id="regConfirmPasswordError"></div>
                 </div>
 
-                <!-- Security Questions -->
+                <!-- Security Questions (Section 5 Question Bank - Pick 3 Different Questions) -->
                 <fieldset>
-                    <legend>Security Questions (Used for Password Recovery)</legend>
+                    <legend>Security Questions (Select 3 Different Questions for Account Recovery)</legend>
                     <div class="form-group">
-                        <label for="regQ4">What is your mother's maiden first name? <span class="req">*</span></label>
-                        <input type="text" id="regQ4" placeholder="Your answer (2-50 characters)" maxlength="50" required>
-                        <div class="error-message" id="regQ4Error"></div>
+                        <label for="regQSelect1">Question 1 <span class="req">*</span></label>
+                        <select id="regQSelect1" required>
+                            <option value="Q1" selected>Q1: What was the name of your first pet?</option>
+                            <option value="Q2">Q2: Who was your best friend in elementary school?</option>
+                            <option value="Q3">Q3: Who was your favorite teacher in high school?</option>
+                            <option value="Q4">Q4: What is your mother's maiden first name?</option>
+                            <option value="Q5">Q5: What street did you live on in Grade 1?</option>
+                            <option value="Q6">Q6: What was the first song you learned by heart?</option>
+                            <option value="Q7">Q7: What was the name of your elementary school?</option>
+                            <option value="Q8">Q8: What dish did you cook for the first time?</option>
+                        </select>
+                        <input type="text" id="regAnswer1" placeholder="Your answer (letters and spaces only, 2-50 chars)" maxlength="50" required style="margin-top: 8px;">
+                        <div class="error-message" id="regAnswer1Error"></div>
                     </div>
                     <div class="form-group">
-                        <label for="regQ7">What was the name of your elementary school? <span class="req">*</span></label>
-                        <input type="text" id="regQ7" placeholder="Your answer (2-50 characters)" maxlength="50" required>
-                        <div class="error-message" id="regQ7Error"></div>
+                        <label for="regQSelect2">Question 2 <span class="req">*</span></label>
+                        <select id="regQSelect2" required>
+                            <option value="Q1">Q1: What was the name of your first pet?</option>
+                            <option value="Q2" selected>Q2: Who was your best friend in elementary school?</option>
+                            <option value="Q3">Q3: Who was your favorite teacher in high school?</option>
+                            <option value="Q4">Q4: What is your mother's maiden first name?</option>
+                            <option value="Q5">Q5: What street did you live on in Grade 1?</option>
+                            <option value="Q6">Q6: What was the first song you learned by heart?</option>
+                            <option value="Q7">Q7: What was the name of your elementary school?</option>
+                            <option value="Q8">Q8: What dish did you cook for the first time?</option>
+                        </select>
+                        <input type="text" id="regAnswer2" placeholder="Your answer (letters and spaces only, 2-50 chars)" maxlength="50" required style="margin-top: 8px;">
+                        <div class="error-message" id="regAnswer2Error"></div>
                     </div>
                     <div class="form-group">
-                        <label for="regQ1">What was the name of your first pet? <span class="req">*</span></label>
-                        <input type="text" id="regQ1" placeholder="Your answer (2-50 characters)" maxlength="50" required>
-                        <div class="error-message" id="regQ1Error"></div>
+                        <label for="regQSelect3">Question 3 <span class="req">*</span></label>
+                        <select id="regQSelect3" required>
+                            <option value="Q1">Q1: What was the name of your first pet?</option>
+                            <option value="Q2">Q2: Who was your best friend in elementary school?</option>
+                            <option value="Q3" selected>Q3: Who was your favorite teacher in high school?</option>
+                            <option value="Q4">Q4: What is your mother's maiden first name?</option>
+                            <option value="Q5">Q5: What street did you live on in Grade 1?</option>
+                            <option value="Q6">Q6: What was the first song you learned by heart?</option>
+                            <option value="Q7">Q7: What was the name of your elementary school?</option>
+                            <option value="Q8">Q8: What dish did you cook for the first time?</option>
+                        </select>
+                        <input type="text" id="regAnswer3" placeholder="Your answer (letters and spaces only, 2-50 chars)" maxlength="50" required style="margin-top: 8px;">
+                        <div class="error-message" id="regAnswer3Error"></div>
                     </div>
                 </fieldset>
 
@@ -241,7 +271,7 @@
                 </div>
 
                 <div class="otp-timer" id="otpTimer" style="display:none;">
-                    Code expires in: <span id="countdown">01:00</span>
+                    Code expires in: <span id="countdown">05:00</span>
                 </div>
 
                 <button type="submit" class="btn-primary" id="verifyBtn">Verify Account</button>

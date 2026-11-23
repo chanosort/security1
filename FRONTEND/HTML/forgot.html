@@ -40,14 +40,25 @@ original<!DOCTYPE html>
                 <button class="btn-primary" onclick="identify()">Continue</button>
             </div>
 
-            <!-- Step 2: Questions -->
+            <!-- Step 2: Questions (Handout Section 10: Choose 1 of 3 registered questions) -->
             <div id="step2" style="display:none">
-                <p style="margin-bottom: 15px; font-size: 13px; color: #708079;">Answer all three questions exactly as typed at registration.</p>
-                <div id="questions"></div>
-                <button class="btn-primary" onclick="submitAnswers()">Verify Answers</button>
+                <p style="margin-bottom: 15px; font-size: 13px; color: #708079;">Choose one of your registered security questions and verify your answer.</p>
+                <div class="form-group">
+                    <label style="display:block; font-weight:600; margin-bottom:6px; color:#2c3e50;">Choose the following question</label>
+                    <select id="chooseQuestion" style="width:100%; padding:10px 12px; border-radius:8px; border:1px solid #ccd0d5; font-size:14px; margin-bottom:12px;"></select>
+                </div>
+                <div class="form-group">
+                    <label style="display:block; font-weight:600; margin-bottom:6px; color:#2c3e50;">Your Answer</label>
+                    <input type="text" id="yourAnswer" placeholder="Your Answer" required style="width:100%; padding:10px 12px; border-radius:8px; border:1px solid #ccd0d5; font-size:14px;">
+                </div>
+                <div class="form-group">
+                    <label style="display:block; font-weight:600; margin-bottom:6px; color:#2c3e50;">Re-enter Answer</label>
+                    <input type="text" id="reenterAnswer" placeholder="Re-enter Answer" required style="width:100%; padding:10px 12px; border-radius:8px; border:1px solid #ccd0d5; font-size:14px;">
+                </div>
+                <button class="btn-primary" onclick="submitAnswers()">Verify Answer</button>
             </div>
 
-            <!-- Step 3: OTP -->
+            <!-- Step 3: OTP (5-minute expiry) -->
             <div id="step3" style="display:none">
                 <p style="margin-bottom: 15px; font-size: 13px; color: #708079;">A 6-digit reset code was sent to your Gmail address.</p>
                 <div class="form-group">
@@ -55,21 +66,21 @@ original<!DOCTYPE html>
                     <input type="text" id="otpCode" placeholder="Enter 6-digit code from Gmail" maxlength="6" required autocomplete="off">
                 </div>
                 <div id="forgotTimer" style="margin-bottom: 15px; font-size: 14px; color: var(--green-700, #20864f); font-weight: 600; text-align: center;">
-                    Code expires in: <span id="forgotCountdown">01:00</span>
+                    Code expires in: <span id="forgotCountdown">05:00</span>
                 </div>
                 <button class="btn-primary" id="verifyOtpBtn" onclick="verifyOtp()">Verify Code</button>
                 <button type="button" class="btn-secondary" id="resendForgotOtpBtn" style="display:none; margin-top: 10px;" onclick="resendForgotOtp()">Resend Code</button>
             </div>
 
-            <!-- Step 4: Change Password -->
+            <!-- Step 4: Change Password (min 8 chars) -->
             <div id="step4" style="display:none">
                 <div class="form-group">
-                    <label>New Password</label>
-                    <input type="password" id="newPw" placeholder="New password" required>
+                    <label style="display:block; font-weight:600; margin-bottom:6px;">New Password (minimum 8 characters)</label>
+                    <input type="password" id="newPw" placeholder="New password (min 8 chars)" minlength="8" required style="width:100%; padding:10px 12px; border-radius:8px; border:1px solid #ccd0d5; font-size:14px;">
                 </div>
                 <div class="form-group">
-                    <label>Re-enter Password</label>
-                    <input type="password" id="newPw2" placeholder="Confirm new password" required>
+                    <label style="display:block; font-weight:600; margin-bottom:6px;">Re-enter Password</label>
+                    <input type="password" id="newPw2" placeholder="Confirm new password" minlength="8" required style="width:100%; padding:10px 12px; border-radius:8px; border:1px solid #ccd0d5; font-size:14px;">
                 </div>
                 <button class="btn-primary" onclick="changePw()">Change Password</button>
             </div>
@@ -109,22 +120,32 @@ original<!DOCTYPE html>
                 return; 
             }
             
-            const q = document.getElementById('questions');
-            q.innerHTML = '';
-            j.questions.forEach(x => {
-                q.innerHTML += `<div class="form-group"><label>${x.question_text}</label><input type="text" data-code="${x.question_code}" placeholder="${x.question_text}" required></div>`;
-            });
+            const qSel = document.getElementById('chooseQuestion');
+            if (qSel) {
+                qSel.innerHTML = '';
+                j.questions.forEach(x => {
+                    const opt = document.createElement('option');
+                    opt.value = x.question_code;
+                    opt.textContent = x.question_text;
+                    qSel.appendChild(opt);
+                });
+            }
             document.getElementById('step1').style.display='none';
             document.getElementById('step2').style.display='block';
             document.getElementById('msg').className = 'alert';
         }
         
         async function submitAnswers(){
-            const answers = {};
-            document.querySelectorAll('#questions input').forEach(i => answers[i.dataset.code] = i.value);
-            
+            const qSel = document.getElementById('chooseQuestion');
+            const selCode = qSel ? qSel.value : '';
+            const ans = (document.getElementById('yourAnswer')?.value || '').trim();
+            const ans2 = (document.getElementById('reenterAnswer')?.value || '').trim();
+
+            if (!ans) { msg("Please provide your answer."); return; }
+            if (ans !== ans2) { msg("Answers do not match."); return; }
+
             const r = await fetch('/api/forgot/answer',{method:'POST',headers:{'Content-Type':'application/json'},
-                body: JSON.stringify({identifier: ident, answers})});
+                body: JSON.stringify({identifier: ident, question_code: selCode, answer: ans, answers: { [selCode]: ans }})});
             const j = await r.json();
             
             if (!r.ok){ msg(j.error||'Error'); return; }
@@ -143,7 +164,7 @@ original<!DOCTYPE html>
         }
 
         function startForgotTimer() {
-            let rem = 60;
+            let rem = 300; // 5 minutes per announcement
             const timerEl = document.getElementById('forgotTimer');
             const countEl = document.getElementById('forgotCountdown');
             const resendBtn = document.getElementById('resendForgotOtpBtn');
@@ -153,7 +174,7 @@ original<!DOCTYPE html>
             if (verifyBtn) verifyBtn.disabled = false;
             if (timerEl) {
                 timerEl.style.color = 'var(--green-700, #20864f)';
-                timerEl.innerHTML = 'Code expires in: <span id="forgotCountdown">01:00</span>';
+                timerEl.innerHTML = 'Code expires in: <span id="forgotCountdown">05:00</span>';
             }
 
             if (window.forgotTimerInterval) clearInterval(window.forgotTimerInterval);
@@ -168,7 +189,7 @@ original<!DOCTYPE html>
                 if (rem <= 0) {
                     clearInterval(window.forgotTimerInterval);
                     if (timerEl) {
-                        timerEl.innerHTML = '<span style="color: #c0392b; font-weight:700;">Code expired (1 min limit). Click Resend Code below.</span>';
+                        timerEl.innerHTML = '<span style="color: #c0392b; font-weight:700;">Code expired (5 min limit). Click Resend Code below.</span>';
                     }
                     if (resendBtn) resendBtn.style.display = 'block';
                 }
@@ -247,17 +268,27 @@ original<!DOCTYPE html>
         }
         
         async function changePw(){
+            const pw = document.getElementById('newPw').value;
+            const pw2 = document.getElementById('newPw2').value;
+            if (pw.length < 8) {
+                msg("Password must be at least 8 characters.");
+                return;
+            }
+            if (pw !== pw2) {
+                msg("Mismatch Password");
+                return;
+            }
             const r = await fetch('/api/change-password',{method:'POST',headers:{'Content-Type':'application/json'},
                 body: JSON.stringify({
                     change_token: changeToken,
-                    password: document.getElementById('newPw').value,
-                    confirm_password: document.getElementById('newPw2').value
+                    password: pw,
+                    confirm_password: pw2
                 })});
             const j = await r.json();
             
             if (r.ok) {
                 document.getElementById('msg').className = 'alert alert-success show';
-                document.getElementById('msg').textContent = j.message;
+                document.getElementById('msg').textContent = j.message || 'Successfully Change Password';
                 setTimeout(()=>location.href='/', 1500);
             } else {
                 msg(j.error);

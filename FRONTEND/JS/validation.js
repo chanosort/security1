@@ -97,13 +97,17 @@ function validateField(id) {
         case 'regIncome':
             if (!input.value) msg = 'Please select an income bracket.';
             break;
+        case 'regAnswer1':
+        case 'regAnswer2':
+        case 'regAnswer3':
         case 'regQ4':
         case 'regQ7':
         case 'regQ1':
             var a = input.value.trim();
             if (!a) msg = 'Please answer this security question.';
+            else if (!/^[A-Za-z ]+$/.test(a)) msg = 'Answers may contain letters and spaces only.';
+            else if (/  /.test(a)) msg = 'Double space is not allowed in answers.';
             else if (a.length < 2 || a.length > 50) msg = 'Answer must be 2-50 characters.';
-            else if (/  /.test(a)) msg = 'Double space is not allowed.';
             break;
         case 'regCaptcha':
             if (!input.value.trim()) msg = 'Please enter the CAPTCHA characters.';

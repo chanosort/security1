@@ -63,12 +63,21 @@ function handleLogin(event) {
                 lockoutBanner.style.display = 'block';
                 var remaining = data.locked_seconds;
                 btn.disabled = true;
+                var regLink = document.querySelector('a[href*="registration.html"]');
+                if (regLink) {
+                    regLink.style.pointerEvents = 'none';
+                    regLink.style.opacity = '0.5';
+                }
                 var timer = setInterval(function() {
                     lockoutBanner.textContent = 'Account locked. Try again in ' + remaining + ' s.';
                     if (--remaining <= 0) {
                         clearInterval(timer);
                         lockoutBanner.style.display = 'none';
                         btn.disabled = false;
+                        if (regLink) {
+                            regLink.style.pointerEvents = 'auto';
+                            regLink.style.opacity = '1';
+                        }
                     }
                 }, 1000);
             }
@@ -89,9 +98,9 @@ function handleLogin(event) {
                 codeInput.value = '';
                 codeInput.focus();
             }
-            var msg = data.message || 'Verification code sent to your Gmail. Please check your inbox and enter it below (expires in 1 min).';
+            var msg = data.message || 'Verification code sent to your Gmail. Please check your inbox and enter it below (expires in 5 min).';
             showAlert('otpAlert', msg, 'success');
-            startLoginOtpTimer(60);
+            startLoginOtpTimer(300);
         } else if (data.token) {
             saveAuthData(data.user, data.token);
             showAlert('loginAlert', 'Login successful!', 'success');
@@ -110,7 +119,7 @@ var loginOtpTimerInterval = null;
 
 function startLoginOtpTimer(durationSeconds) {
     if (loginOtpTimerInterval) clearInterval(loginOtpTimerInterval);
-    var remaining = durationSeconds || 60;
+    var remaining = durationSeconds || (CONFIG.OTP_EXPIRY_MINUTES * 60) || 300;
     var timerEl = document.getElementById('loginOtpTimer');
     var resendBtn = document.getElementById('resendLoginOtpBtn');
     var verifyBtn = document.getElementById('loginVerifyBtn');
@@ -132,7 +141,7 @@ function startLoginOtpTimer(durationSeconds) {
         if (remaining <= 0) {
             clearInterval(loginOtpTimerInterval);
             if (timerEl) {
-                timerEl.innerHTML = '<span style="color: #c0392b; font-weight: 700;">Code expired (1 min limit). Click Resend Code below.</span>';
+                timerEl.innerHTML = '<span style="color: #c0392b; font-weight: 700;">Code expired (5 min limit). Click Resend Code below.</span>';
             }
             if (resendBtn) resendBtn.style.display = 'block';
         }
@@ -170,7 +179,7 @@ function handleResendLoginOtp() {
             codeInput.focus();
         }
         showAlert('otpAlert', data.message || 'New verification code sent to your Gmail!', 'success');
-        startLoginOtpTimer(60);
+        startLoginOtpTimer(300);
     })
     .catch(function(err) {
         if (resendBtn) {

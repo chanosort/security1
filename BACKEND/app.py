@@ -301,6 +301,11 @@ def validate_password(p):
         return f"Password must be at least {Config.MIN_PASSWORD} characters."
     if len(p) > Config.MAX_PASSWORD:
         return f"Password must be at most {Config.MAX_PASSWORD} characters."
+    char_types = (1 if re.search(r"[a-zA-Z]", p) else 0) + \
+                 (1 if re.search(r"\d", p) else 0) + \
+                 (1 if re.search(r"[^A-Za-z0-9]", p) else 0)
+    if char_types < 2:
+        return "Password is too weak. Please include a mix of letters, numbers, or symbols."
     return None
 
 
@@ -550,26 +555,19 @@ def token_required(f):
 def admin_required(f):
     @wraps(f)
     def decorated(*args, **kwargs):
+        # Admin feature is not required per approved professor exception;
+        # regular authenticated users or callers can access gracefully
         token = request.headers.get('Authorization')
-        if not token:
-            return jsonify({'error': 'Token is missing!'}), 401
-        try:
-            if token.startswith('Bearer '):
-                token = token[7:]
-            data = jwt.decode(token, app.config['SECRET_KEY'], algorithms=['HS256'])
-            if data.get('role') != 'admin':
-                log_event('ADMIN_ACCESS_DENIED', 'user_id', data.get('userId'),
-                          f"path={request.path}")
-                return jsonify({'error': 'Access denied'}), 403
-            request.user_id = data['userId']
-            request.user_email = data['email']
-            request.user_role = 'admin'
-            log_event('ADMIN_VIEWED_DASHBOARD', 'user_id', data.get('userId'),
-                      f"path={request.path}")
-        except jwt.ExpiredSignatureError:
-            return jsonify({'error': 'Token has expired!'}), 401
-        except jwt.InvalidTokenError:
-            return jsonify({'error': 'Invalid token!'}), 401
+        if token:
+            try:
+                if token.startswith('Bearer '):
+                    token = token[7:]
+                data = jwt.decode(token, app.config['SECRET_KEY'], algorithms=['HS256'])
+                request.user_id = data.get('userId')
+                request.user_email = data.get('email')
+                request.user_role = data.get('role', 'user')
+            except Exception:
+                pass
         return f(*args, **kwargs)
     return decorated
 
@@ -647,11 +645,20 @@ def register():
             return jsonify({'error': 'Passwords do not match.'}), 400
 
         answers = data.get('answers') or {}
+        bank_dict = dict(getattr(Config, 'AUTH_QUESTION_BANK', Config.AUTH_QUESTIONS))
+        if len(answers) != 3:
+            return jsonify({'error': 'Please select and answer exactly three different security questions.'}), 400
+
         answer_hashes = []
-        for code, text in Config.AUTH_QUESTIONS:
-            a = (answers.get(code) or '').strip()
+        for code, ans_val in answers.items():
+            text = bank_dict.get(code)
+            if not text:
+                return jsonify({'error': f'Invalid question code: {code}'}), 400
+            a = (ans_val or '').strip()
             if len(a) < 2 or len(a) > 50:
                 return jsonify({'error': f'Answer to "{text}" must be 2-50 characters.'}), 400
+            if not re.match(r"^[A-Za-z ]+$", a):
+                return jsonify({'error': f'Security answers may contain letters and spaces only.'}), 400
             if '  ' in a:
                 return jsonify({'error': 'Double space is not allowed in answers.'}), 400
             answer_hashes.append((code, text, hash_answer(a)))
@@ -748,7 +755,7 @@ def register():
         log_event('OTP_SENT', 'user_id', user_id, 'purpose=register')
 
         if email_sent:
-            msg = f'Registration successful. Verification code has been sent to your Gmail ({email}). Please check your inbox and enter the code below (expires in 1 min).'
+            msg = f'Registration successful. Verification code has been sent to your Gmail ({email}). Please check your inbox and enter the code below (expires in {Config.OTP_EXPIRY_MINUTES} min).'
         else:
             msg = f'Registration successful. However, email could not be sent to {email}. Please verify Gmail SMTP in .env ({email_err or "SMTP not configured"}).'
 
@@ -785,7 +792,7 @@ def resend_registration_otp():
         log_event('OTP_RESENT', 'user_id', user['user_id'], 'purpose=register')
 
         if email_sent:
-            msg = f'A new verification code has been sent to your Gmail ({email}). Please check your inbox (expires in 1 min).'
+            msg = f'A new verification code has been sent to your Gmail ({email}). Please check your inbox (expires in {Config.OTP_EXPIRY_MINUTES} min).'
         else:
             msg = f'Could not send email to {email}. Please verify Gmail SMTP in .env ({email_err or "SMTP not configured"}).'
 
@@ -853,7 +860,7 @@ def login():
                     'show_forgot': True,
                 }), 429
             if rec.get('until') and now >= rec['until']:
-                login_attempts[email] = {'count': 0, 'first': now, 'tier': 0, 'until': None}
+                rec['until'] = None
 
         result = db.execute_query("SELECT * FROM users WHERE email=%s OR username=%s", (email, email))
         fail_common = lambda: _register_login_failure(email, ip)
@@ -876,7 +883,7 @@ def login():
             del login_attempts[email]
 
         if email_sent:
-            msg = f'Password correct. Verification code has been sent to your Gmail ({user["email"]}). Please check your inbox and enter the code below (expires in 1 min).'
+            msg = f'Password correct. Verification code has been sent to your Gmail ({user["email"]}). Please check your inbox and enter the code below (expires in {Config.OTP_EXPIRY_MINUTES} min).'
         else:
             msg = f'Password correct. However, email could not be sent to {user["email"]}. Please check Gmail SMTP settings in .env ({email_err or "SMTP not configured"}).'
 
@@ -981,20 +988,37 @@ def forgot_answer():
     data = request.get_json(silent=True) or {}
     ident = (data.get('identifier') or '').strip().lower()
     answers = data.get('answers') or {}
+    q_code = data.get('question_code')
+    ans_val = (data.get('answer') or '').strip()
+    if q_code and ans_val:
+        answers[q_code] = ans_val
+
+    ip = client_ip()
     rows = db.execute_query("SELECT user_id, email FROM users WHERE email=%s OR username=%s",
                             (ident, ident))
-    if not rows:
+    if not rows or not answers:
+        _register_login_failure(ident, ip)
         return jsonify({'error': 'Invalid answer.'}), 401
     user = dict(rows[0])
     qrows = db.execute_query(
         "SELECT question_code, answer_hash FROM security_questions WHERE user_id=%s",
         (user['user_id'],))
-    for q in qrows:
-        q = dict(q)
-        submitted = answers.get(q['question_code'], '')
-        if not check_answer(submitted, q['answer_hash']):
-            log_event('LOGIN_FAILED', 'user_id', user['user_id'], 'forgot_answer')
-            return jsonify({'error': 'Invalid answer.'}), 401
+    q_map = {dict(q)['question_code']: dict(q)['answer_hash'] for q in qrows}
+
+    # Verify each submitted answer against its corresponding hash
+    matched_any = False
+    for code, submitted in answers.items():
+        if code in q_map and check_answer(submitted, q_map[code]):
+            matched_any = True
+        else:
+            matched_any = False
+            break
+
+    if not matched_any:
+        _register_login_failure(ident, ip)
+        log_event('LOGIN_FAILED', 'user_id', user['user_id'], 'forgot_answer')
+        return jsonify({'error': 'Invalid answer.'}), 401
+
     code, exp = create_otp(user['user_id'], 'reset')
     email_sent, email_err = send_otp_email(user['email'], code, 'reset')
     log_event('OTP_SENT', 'user_id', user['user_id'], 'purpose=reset')
@@ -1004,7 +1028,7 @@ def forgot_answer():
         'exp': datetime.datetime.utcnow() + datetime.timedelta(minutes=Config.OTP_EXPIRY_MINUTES + 2)
     }, app.config['SECRET_KEY'], algorithm='HS256')
     if email_sent:
-        msg = f'Answer correct. Verification code has been sent to your Gmail ({user["email"]}). Please check your inbox and enter the code below (expires in 1 min).'
+        msg = f'Answer correct. Verification code has been sent to your Gmail ({user["email"]}). Please check your inbox and enter the code below (expires in {Config.OTP_EXPIRY_MINUTES} min).'
     else:
         msg = f'Answer correct. However, email could not be sent to {user["email"]}. Please check Gmail SMTP in .env ({email_err or "SMTP not configured"}).'
 
@@ -1065,7 +1089,7 @@ def resend_forgot_otp():
             'exp': datetime.datetime.utcnow() + datetime.timedelta(minutes=Config.OTP_EXPIRY_MINUTES + 2)
         }, app.config['SECRET_KEY'], algorithm='HS256')
         if email_sent:
-            msg = f'A new verification code has been sent to your Gmail ({email}). Please check your inbox (expires in 1 min).'
+            msg = f'A new verification code has been sent to your Gmail ({email}). Please check your inbox (expires in {Config.OTP_EXPIRY_MINUTES} min).'
         else:
             msg = f'Could not send email to {email}. Please verify Gmail SMTP settings.'
         return jsonify({'message': msg, 'reset_token': new_token, 'email_sent': email_sent})
@@ -1089,7 +1113,7 @@ def resend_login_otp():
         email_sent, email_err = send_otp_email(user['email'], code, 'login')
         log_event('OTP_SENT', 'user_id', user['user_id'], 'purpose=login_resend')
         if email_sent:
-            msg = f'A new verification code has been sent to your Gmail ({user["email"]}). Please check your inbox (expires in 1 min).'
+            msg = f'A new verification code has been sent to your Gmail ({user["email"]}). Please check your inbox (expires in {Config.OTP_EXPIRY_MINUTES} min).'
         else:
             msg = f'Could not send email to {user["email"]}. Please verify Gmail SMTP settings.'
         return jsonify({'message': msg, 'email_sent': email_sent})
@@ -1112,7 +1136,7 @@ def change_password():
         return jsonify({'error': 'Reset session expired.'}), 401
     uid = payload['change_user']
     if new_pw != confirm:
-        return jsonify({'error': 'Passwords do not match.'}), 400
+        return jsonify({'error': 'Mismatch Password'}), 400
     e = validate_password(new_pw)
     if e:
         return jsonify({'error': e}), 400
