@@ -124,6 +124,19 @@ if CSRF_AVAILABLE:
     csrf = CSRFProtect(app)
 
 
+@app.before_request
+def handle_cors_preflight():
+    if request.method == 'OPTIONS':
+        origin = request.headers.get('Origin', '')
+        response = app.make_default_options_response()
+        if origin and (origin.startswith('http://localhost:') or origin.startswith('http://127.0.0.1:') or origin in Config.CORS_ORIGINS):
+            response.headers['Access-Control-Allow-Origin'] = origin
+            response.headers['Access-Control-Allow-Credentials'] = 'true'
+            response.headers['Access-Control-Allow-Headers'] = 'Content-Type, Authorization, X-Requested-With, X-CSRF-Token'
+            response.headers['Access-Control-Allow-Methods'] = 'GET, POST, PUT, DELETE, OPTIONS'
+        return response
+
+
 @app.after_request
 def security_headers(response):
     response.headers['X-Frame-Options'] = 'DENY'
@@ -133,6 +146,14 @@ def security_headers(response):
     response.headers['Cache-Control'] = 'no-store, no-cache, must-revalidate, max-age=0'
     response.headers['Pragma'] = 'no-cache'
     response.headers['Expires'] = '0'
+
+    origin = request.headers.get('Origin', '')
+    if origin and (origin.startswith('http://localhost:') or origin.startswith('http://127.0.0.1:') or origin in Config.CORS_ORIGINS):
+        response.headers['Access-Control-Allow-Origin'] = origin
+        response.headers['Access-Control-Allow-Credentials'] = 'true'
+        response.headers['Access-Control-Allow-Headers'] = 'Content-Type, Authorization, X-Requested-With, X-CSRF-Token'
+        response.headers['Access-Control-Allow-Methods'] = 'GET, POST, PUT, DELETE, OPTIONS'
+
     return response
 
 
@@ -722,20 +743,18 @@ def register():
         if income_bracket not in allowed_brackets:
             return jsonify({'error': 'Please select a valid income bracket.'}), 400
 
-        # Check existing accounts - allow unverified attempts to be replaced
+        # Check existing accounts - Section 4.4: ID Number is Primary Key
+        existing_id = db.execute_query("SELECT user_id, verified FROM users WHERE id_number=%s", (id_number,))
+        if existing_id:
+            return jsonify({'error': 'This ID Number is already registered.'}), 400
+
+        # Section 4.8: Email must also be unique
         existing_email = db.execute_query("SELECT user_id, verified FROM users WHERE LOWER(email)=LOWER(%s)", (email,))
         if existing_email:
             if existing_email[0]['verified']:
                 return jsonify({'error': 'This email is already registered.'}), 400
             else:
                 db.execute_query("DELETE FROM users WHERE user_id=%s", (existing_email[0]['user_id'],))
-
-        existing_id = db.execute_query("SELECT user_id, verified FROM users WHERE id_number=%s", (id_number,))
-        if existing_id:
-            if existing_id[0]['verified']:
-                return jsonify({'error': 'This ID Number is already registered.'}), 400
-            else:
-                db.execute_query("DELETE FROM users WHERE user_id=%s", (existing_id[0]['user_id'],))
 
         existing_user = db.execute_query("SELECT user_id, verified FROM users WHERE LOWER(username)=LOWER(%s)", (username,))
         if existing_user:
@@ -1263,6 +1282,36 @@ def username_available():
     rows = db.execute_query("SELECT 1 FROM users WHERE LOWER(username)=LOWER(%s) AND verified=TRUE", (u,))
     if rows:
         return jsonify({'available': False, 'taken': True, 'error': 'Username is already taken.'})
+    return jsonify({'available': True})
+
+
+@app.route('/api/id-number-available', methods=['GET'])
+@app.route('/api/id-available', methods=['GET'])
+def id_number_available():
+    id_num = (request.args.get('id') or request.args.get('id_number') or request.args.get('u') or '').strip()
+    if not id_num:
+        return jsonify({'available': False, 'error': 'ID Number is required.'})
+    # Auto-hyphenate if 8 consecutive digits: 24410011 -> 2441-0011
+    if re.match(r"^\d{8}$", id_num):
+        id_num = id_num[:4] + '-' + id_num[4:]
+    if not ID_RE.match(id_num):
+        return jsonify({'available': False, 'error': 'ID Number must follow the format xxxx-xxxx.', 'invalid_format': True})
+    rows = db.execute_query("SELECT 1 FROM users WHERE id_number=%s", (id_num,))
+    if rows:
+        return jsonify({'available': False, 'taken': True, 'error': 'This ID Number is already registered.'})
+    return jsonify({'available': True})
+
+
+@app.route('/api/email-available', methods=['GET'])
+def email_available():
+    email = (request.args.get('email') or request.args.get('e') or request.args.get('u') or '').strip().lower()
+    if not email:
+        return jsonify({'available': False, 'error': 'Email is required.'})
+    if not EMAIL_RE.match(email):
+        return jsonify({'available': False, 'error': 'Please enter a valid email address.', 'invalid_format': True})
+    rows = db.execute_query("SELECT 1 FROM users WHERE LOWER(email)=LOWER(%s)", (email,))
+    if rows:
+        return jsonify({'available': False, 'taken': True, 'error': 'This email is already registered.'})
     return jsonify({'available': True})
 
 

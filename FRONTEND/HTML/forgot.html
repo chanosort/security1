@@ -8,6 +8,7 @@
     <meta name="apple-mobile-web-app-status-bar-style" content="default">
     <title>ExpenseTracker - Forgot Password</title>
     <link rel="stylesheet" href="/CSS/style2.css">
+    <script src="/JS/config.js?v=20261125"></script>
     <!-- Google reCAPTCHA v2 -->
     <script src="https://www.google.com/recaptcha/api.js" async defer></script>
     <style>
@@ -111,6 +112,10 @@
         let isIdentifying = false;
         window._forgotRecaptchaToken = '';
 
+        const API_BASE = (window.CONFIG && window.CONFIG.API_URL)
+            ? window.CONFIG.API_URL
+            : ((window.location.origin && !window.location.origin.includes(':5500') && !window.location.origin.includes(':3000') && !window.location.origin.startsWith('file:')) ? '/api' : 'http://localhost:5000/api');
+
         window.onForgotRecaptchaSuccess = function(t) {
             window._forgotRecaptchaToken = t;
             const el = document.getElementById('msg');
@@ -163,9 +168,10 @@
             }
 
             try {
-                const r = await fetch('/api/forgot/identify', {
+                const r = await fetch(API_BASE + '/forgot/identify', {
                     method: 'POST',
                     headers: {'Content-Type': 'application/json'},
+                    credentials: 'include',
                     body: JSON.stringify({identifier: ident, 'g-recaptcha-response': cap, 'captcha': cap})
                 });
                 const j = await r.json();
@@ -203,6 +209,7 @@
                 document.getElementById('step1').style.display = 'none';
                 document.getElementById('step2').style.display = 'block';
                 document.getElementById('msg').className = 'alert';
+                isIdentifying = false;
             } catch(err) {
                 msg('Network error. Please try again.');
                 if (btn) {
@@ -232,8 +239,12 @@
             }
 
             try {
-                const r = await fetch('/api/forgot/answer',{method:'POST',headers:{'Content-Type':'application/json'},
-                    body: JSON.stringify({identifier: ident, question_code: selCode, answer: ans, answers: { [selCode]: ans }})});
+                const r = await fetch(API_BASE + '/forgot/answer',{
+                    method:'POST',
+                    headers:{'Content-Type':'application/json'},
+                    credentials: 'include',
+                    body: JSON.stringify({identifier: ident, question_code: selCode, answer: ans, answers: { [selCode]: ans }})
+                });
                 const j = await r.json();
                 
                 if (!r.ok){ 
@@ -256,6 +267,7 @@
                 document.getElementById('step3').style.display='block';
                 if (otpInput) otpInput.focus();
 
+                isSubmittingAnswers = false;
                 startForgotTimer();
             } catch(e) {
                 msg('Network error. Please try again.');
@@ -307,9 +319,10 @@
                 resendBtn.textContent = 'Sending new code...';
             }
             try {
-                const r = await fetch('/api/resend-forgot-otp', {
+                const r = await fetch(API_BASE + '/resend-forgot-otp', {
                     method: 'POST',
                     headers: {'Content-Type': 'application/json'},
+                    credentials: 'include',
                     body: JSON.stringify({reset_token: resetToken})
                 });
                 const j = await r.json();
@@ -347,36 +360,48 @@
                 btn.disabled = true;
                 btn.textContent = 'Verifying...';
             }
-            const r = await fetch('/api/forgot/verify',{method:'POST',headers:{'Content-Type':'application/json'},
-                body: JSON.stringify({reset_token: resetToken, code: document.getElementById('otpCode').value.trim()})});
-            const j = await r.json();
-            if (btn) {
-                btn.disabled = false;
-                btn.textContent = 'Verify Code';
+            try {
+                const r = await fetch(API_BASE + '/forgot/verify',{
+                    method:'POST',
+                    headers:{'Content-Type':'application/json'},
+                    credentials: 'include',
+                    body: JSON.stringify({reset_token: resetToken, code: document.getElementById('otpCode').value.trim()})
+                });
+                const j = await r.json();
+                if (btn) {
+                    btn.disabled = false;
+                    btn.textContent = 'Verify Code';
+                }
+                
+                if (!r.ok){ 
+                    msg(j.error||'Error');
+                    // Always reveal Resend Code button if verification fails or code expired
+                    const resendBtn = document.getElementById('resendForgotOtpBtn');
+                    if (resendBtn) resendBtn.style.display = 'block';
+                    return; 
+                }
+                
+                if (window.forgotTimerInterval) clearInterval(window.forgotTimerInterval);
+                changeToken = j.change_token;
+                document.getElementById('msg').className = 'alert alert-success show';
+                document.getElementById('msg').textContent = j.message;
+                document.getElementById('step3').style.display='none';
+                document.getElementById('step4').style.display='block';
+            } catch(e) {
+                if (btn) {
+                    btn.disabled = false;
+                    btn.textContent = 'Verify Code';
+                }
+                msg('Network error. Please try again.');
             }
-            
-            if (!r.ok){ 
-                msg(j.error||'Error');
-                // Always reveal Resend Code button if verification fails or code expired
-                const resendBtn = document.getElementById('resendForgotOtpBtn');
-                if (resendBtn) resendBtn.style.display = 'block';
-                return; 
-            }
-            
-            if (window.forgotTimerInterval) clearInterval(window.forgotTimerInterval);
-            changeToken = j.change_token;
-            document.getElementById('msg').className = 'alert alert-success show';
-            document.getElementById('msg').textContent = j.message;
-            document.getElementById('step3').style.display='none';
-            document.getElementById('step4').style.display='block';
         }
         
         let isChangingPw = false;
         async function changePw(){
             if (isChangingPw) return;
 
-            const pw = document.getElementById('newPw').value;
-            const pw2 = document.getElementById('newPw2').value;
+            const pw = (document.getElementById('newPw')?.value || '');
+            const pw2 = (document.getElementById('newPw2')?.value || '');
             if (pw.length < 8) {
                 msg("Password must be at least 8 characters.");
                 return;
@@ -391,20 +416,25 @@
             if (btn) { btn.disabled = true; btn.textContent = 'Changing...'; }
 
             try {
-                const r = await fetch('/api/change-password',{method:'POST',headers:{'Content-Type':'application/json'},
+                const r = await fetch(API_BASE + '/change-password',{
+                    method:'POST',
+                    headers:{'Content-Type':'application/json'},
+                    credentials: 'include',
                     body: JSON.stringify({
                         change_token: changeToken,
                         password: pw,
                         confirm_password: pw2
-                    })});
+                    })
+                });
                 const j = await r.json();
                 
                 if (r.ok) {
                     document.getElementById('msg').className = 'alert alert-success show';
                     document.getElementById('msg').textContent = j.message || 'Successfully Change Password';
+                    isChangingPw = false;
                     setTimeout(()=>location.href='/', 1500);
                 } else {
-                    msg(j.error);
+                    msg(j.error || 'Failed to change password.');
                     if (btn) { btn.disabled = false; btn.textContent = 'Change Password'; }
                     isChangingPw = false;
                 }

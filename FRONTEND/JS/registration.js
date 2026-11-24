@@ -222,8 +222,49 @@ function handleRegister(event) {
         if (!res.ok || data.error) {
             var errMsg = data.error || 'Registration failed. Please try again.';
             showAlert('registerAlert', errMsg, 'error');
-            var topAlert = document.getElementById('registerAlert');
-            if (topAlert) topAlert.scrollIntoView({ behavior: 'smooth', block: 'center' });
+
+            // Handout §3.3, §4.4, §4.8, §4.9: Show specific field error directly under the field
+            if (errMsg.indexOf('ID Number') !== -1 || errMsg.indexOf('id_number') !== -1) {
+                var idInput = document.getElementById('regIdNumber');
+                var idErr = document.getElementById('regIdNumberError');
+                if (idInput && idErr) {
+                    idInput.classList.add('error');
+                    var g = idInput.closest('.form-group');
+                    if (g) g.classList.add('error');
+                    idErr.textContent = 'This ID Number is already registered.';
+                    idErr.classList.add('show');
+                    idInput.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                    idInput.focus();
+                }
+            } else if (errMsg.indexOf('email') !== -1 || errMsg.indexOf('Email') !== -1) {
+                var emailInput = document.getElementById('regEmail');
+                var emailErr = document.getElementById('regEmailError');
+                if (emailInput && emailErr) {
+                    emailInput.classList.add('error');
+                    var g = emailInput.closest('.form-group');
+                    if (g) g.classList.add('error');
+                    emailErr.textContent = 'This email is already registered.';
+                    emailErr.classList.add('show');
+                    emailInput.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                    emailInput.focus();
+                }
+            } else if (errMsg.indexOf('Username') !== -1 || errMsg.indexOf('username') !== -1) {
+                var uInput = document.getElementById('regUsername');
+                var uErr = document.getElementById('regUsernameError');
+                if (uInput && uErr) {
+                    uInput.classList.add('error');
+                    var g = uInput.closest('.form-group');
+                    if (g) g.classList.add('error');
+                    uErr.textContent = 'Username is already taken.';
+                    uErr.classList.add('show');
+                    uInput.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                    uInput.focus();
+                }
+            } else {
+                var topAlert = document.getElementById('registerAlert');
+                if (topAlert) topAlert.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            }
+
             if (typeof refreshCaptcha === 'function') refreshCaptcha('captchaImg');
             // Reset CAPTCHA widget on error
             if (window.grecaptcha) {
@@ -471,11 +512,114 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     });
 
+    // Live ID Number availability (§4.4)
+    var idInput = document.getElementById('regIdNumber');
+    if (idInput) {
+        var _idDebounce = null;
+        var checkIdAvailability = function() {
+            var raw = (idInput.value || '').trim();
+            var digits = raw.replace(/\D/g, '');
+            if (digits.length === 8 && raw.indexOf('-') === -1) {
+                idInput.value = digits.slice(0, 4) + '-' + digits.slice(4);
+                raw = idInput.value;
+            }
+            var val = idInput.value.trim();
+            var err = document.getElementById('regIdNumberError');
+            var group = idInput.closest('.form-group');
+            if (!val) {
+                if (err && err.textContent === 'This ID Number is already registered.') {
+                    err.classList.remove('show');
+                    err.textContent = '';
+                    idInput.classList.remove('error');
+                    if (group) group.classList.remove('error');
+                }
+                return;
+            }
+            if (!/^\d{4}-\d{4}$/.test(val)) return;
+
+            fetch(CONFIG.API_URL + '/id-number-available?id=' + encodeURIComponent(val), { credentials: 'include' })
+                .then(function(r) { return r.json(); })
+                .then(function(j) {
+                    var err = document.getElementById('regIdNumberError');
+                    var group = idInput.closest('.form-group');
+                    if (!err || !j || j.isServerError) return;
+                    if (j.taken) {
+                        idInput.classList.add('error');
+                        if (group) group.classList.add('error');
+                        err.textContent = 'This ID Number is already registered.';
+                        err.classList.add('show');
+                    } else if (j.available === true) {
+                        if (err.textContent === 'This ID Number is already registered.') {
+                            idInput.classList.remove('error');
+                            if (group) group.classList.remove('error');
+                            err.classList.remove('show');
+                            err.textContent = '';
+                        }
+                    }
+                })
+                .catch(function() {});
+        };
+
+        idInput.addEventListener('input', function() {
+            clearTimeout(_idDebounce);
+            var raw = this.value.trim();
+            var digits = raw.replace(/\D/g, '');
+            if (digits.length === 8 && raw.indexOf('-') === -1) {
+                this.value = digits.slice(0, 4) + '-' + digits.slice(4);
+                raw = this.value;
+            }
+            var err = document.getElementById('regIdNumberError');
+            if (/^\d{4}-\d{4}$/.test(raw)) {
+                _idDebounce = setTimeout(checkIdAvailability, 150);
+            } else if (err && err.textContent === 'This ID Number is already registered.') {
+                err.classList.remove('show');
+                err.textContent = '';
+                idInput.classList.remove('error');
+                var group = idInput.closest('.form-group');
+                if (group) group.classList.remove('error');
+            }
+        });
+
+        idInput.addEventListener('blur', checkIdAvailability);
+        idInput.addEventListener('change', checkIdAvailability);
+        idInput.addEventListener('focus', checkIdAvailability);
+        idInput.addEventListener('click', checkIdAvailability);
+        idInput.addEventListener('paste', function() { setTimeout(checkIdAvailability, 50); });
+    }
+
     // Live username availability
     var uname = document.getElementById('regUsername');
     if (uname) {
-        // §4.9 Live username availability check while typing (debounced 400ms)
+        // §4.9 Live username availability check while typing (debounced 300ms)
         var _unameDebounce = null;
+        var checkUsernameAvailability = function() {
+            var u = uname.value.trim();
+            if (!u || u.length < (CONFIG.MIN_USERNAME || 6)) return;
+            fetch(CONFIG.API_URL + '/username-available?u=' + encodeURIComponent(u), { credentials: 'include' })
+                .then(function(r) { return r.json(); })
+                .then(function(j) {
+                    var err = document.getElementById('regUsernameError');
+                    var group = uname.closest('.form-group');
+                    if (!err || !j || j.isServerError) return;
+                    if (j.taken) {
+                        uname.classList.add('error');
+                        if (group) group.classList.add('error');
+                        err.textContent = 'Username is already taken.';
+                        err.classList.add('show');
+                    } else if (j.error && j.invalid_format) {
+                        uname.classList.add('error');
+                        if (group) group.classList.add('error');
+                        err.textContent = j.error;
+                        err.classList.add('show');
+                    } else if (j.available === true) {
+                        uname.classList.remove('error');
+                        if (group) group.classList.remove('error');
+                        err.classList.remove('show');
+                        err.textContent = '';
+                    }
+                }).catch(function() {});
+        };
+
         uname.addEventListener('input', function() {
             clearTimeout(_unameDebounce);
             var u = this.value.trim();
@@ -485,64 +629,70 @@ document.addEventListener('DOMContentLoaded', function() {
                 uname.classList.remove('error');
                 return;
             }
-            _unameDebounce = setTimeout(function() {
-                fetch(CONFIG.API_URL + '/username-available?u=' + encodeURIComponent(u), { credentials: 'include' })
-                    .then(function(r) { return r.json(); })
-                    .then(function(j) {
-                        var err = document.getElementById('regUsernameError');
-                        if (!err || !j || j.isServerError) return;
-                        if (j.taken) {
-                            uname.classList.add('error');
-                            err.textContent = 'Username is already taken.';
-                            err.classList.add('show');
-                        } else if (j.error && j.invalid_format) {
-                            uname.classList.add('error');
-                            err.textContent = j.error;
-                            err.classList.add('show');
-                        } else if (j.available === true) {
-                            uname.classList.remove('error');
+            _unameDebounce = setTimeout(checkUsernameAvailability, 300);
+        });
+
+        uname.addEventListener('blur', checkUsernameAvailability);
+        uname.addEventListener('focus', checkUsernameAvailability);
+        uname.addEventListener('click', checkUsernameAvailability);
+        uname.addEventListener('paste', function() { setTimeout(checkUsernameAvailability, 50); });
+    }
+
+    // Live email availability (§4.8)
+    var emailInput = document.getElementById('regEmail');
+    if (emailInput) {
+        var _emailDebounce = null;
+        var checkEmailAvailability = function() {
+            var val = emailInput.value.trim().toLowerCase();
+            var err = document.getElementById('regEmailError');
+            var group = emailInput.closest('.form-group');
+            if (!val) return;
+            // Only query server if format has @ and .
+            if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(val)) return;
+
+            fetch(CONFIG.API_URL + '/email-available?email=' + encodeURIComponent(val), { credentials: 'include' })
+                .then(function(r) { return r.json(); })
+                .then(function(j) {
+                    var err = document.getElementById('regEmailError');
+                    var group = emailInput.closest('.form-group');
+                    if (!err || !j || j.isServerError) return;
+                    if (j.taken) {
+                        emailInput.classList.add('error');
+                        if (group) group.classList.add('error');
+                        err.textContent = 'This email is already registered.';
+                        err.classList.add('show');
+                    } else if (j.available === true) {
+                        if (err.textContent === 'This email is already registered.') {
+                            emailInput.classList.remove('error');
+                            if (group) group.classList.remove('error');
                             err.classList.remove('show');
                             err.textContent = '';
                         }
-                    }).catch(function() {});
-            }, 400);
-        });
-
-        uname.addEventListener('blur', function() {
-            var u = this.value.trim();
-            if (!u || u.length < (CONFIG.MIN_USERNAME || 7)) return;
-            fetch(CONFIG.API_URL + '/username-available?u=' + encodeURIComponent(u), { credentials: 'include' })
-                .then(function(r) {
-                    if (!r.ok) {
-                        return r.json().catch(function() { return {}; }).then(function(data) {
-                            return { isServerError: true, data: data };
-                        });
-                    }
-                    return r.json();
-                })
-                .then(function(j) {
-                    var err = document.getElementById('regUsernameError');
-                    if (!err || !j) return;
-                    if (j.isServerError) {
-                        // Server/database 500 error should NOT falsely flag username as taken
-                        return;
-                    }
-                    if (j.taken) {
-                        uname.classList.add('error');
-                        err.textContent = 'Username is already taken.';
-                        err.classList.add('show');
-                    } else if (j.error && j.invalid_format) {
-                        uname.classList.add('error');
-                        err.textContent = j.error;
-                        err.classList.add('show');
-                    } else if (j.available === true) {
-                        uname.classList.remove('error');
-                        err.classList.remove('show');
-                        err.textContent = '';
                     }
                 })
                 .catch(function() {});
+        };
+
+        emailInput.addEventListener('input', function() {
+            clearTimeout(_emailDebounce);
+            var val = this.value.trim();
+            var err = document.getElementById('regEmailError');
+            if (val.indexOf('@') !== -1 && val.indexOf('.') !== -1) {
+                _emailDebounce = setTimeout(checkEmailAvailability, 250);
+            } else if (err && err.textContent === 'This email is already registered.') {
+                err.classList.remove('show');
+                err.textContent = '';
+                emailInput.classList.remove('error');
+                var group = emailInput.closest('.form-group');
+                if (group) group.classList.remove('error');
+            }
         });
+
+        emailInput.addEventListener('blur', checkEmailAvailability);
+        emailInput.addEventListener('change', checkEmailAvailability);
+        emailInput.addEventListener('focus', checkEmailAvailability);
+        emailInput.addEventListener('click', checkEmailAvailability);
+        emailInput.addEventListener('paste', function() { setTimeout(checkEmailAvailability, 50); });
     }
 
     // Auto age calculation (FIXED: uses b.getDate() instead of bd.getDate())

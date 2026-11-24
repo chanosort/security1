@@ -119,6 +119,10 @@ function validateField(id) {
             return;
     }
 
+    if (msg === '' && error && (error.textContent === 'This ID Number is already registered.' || error.textContent === 'Username is already taken.' || error.textContent === 'This email is already registered.')) {
+        return;
+    }
+
     input.classList.toggle('error', !!msg);
     input.closest('.form-group') && input.closest('.form-group').classList.toggle('error', !!msg);
     if (error) {
