@@ -3,11 +3,41 @@
 // Handles all core + system fields, CAPTCHA, consent, OTP timer & resend
 // ============================================
 
+window._regRecaptchaToken = window._regRecaptchaToken || '';
+window.onRegRecaptchaSuccess = function(t) {
+    window._regRecaptchaToken = t;
+    var errEl = document.getElementById('regCaptchaError');
+    if (errEl) { errEl.textContent = ''; errEl.classList.remove('show'); }
+    var topAlert = document.getElementById('registerAlert');
+    if (topAlert && topAlert.textContent && topAlert.textContent.indexOf('CAPTCHA') !== -1) {
+        hideAlert('registerAlert');
+    }
+};
+window.onRegRecaptchaExpired = function() {
+    window._regRecaptchaToken = '';
+};
+
+function getRegCaptchaToken() {
+    if (window._regRecaptchaToken) return window._regRecaptchaToken;
+    if (typeof grecaptcha !== 'undefined' && grecaptcha.getResponse) {
+        var resp = grecaptcha.getResponse();
+        if (resp) return resp;
+    }
+    var el = document.querySelector('[name="g-recaptcha-response"]');
+    if (el && el.value) return el.value;
+    return '';
+}
+
 var pendingRegisterEmail = '';
 var otpTimerInterval = null;
+var isRegistering = false;
 
 function handleRegister(event) {
-    if (event) event.preventDefault();
+    if (event) {
+        event.preventDefault();
+        event.stopPropagation();
+    }
+    if (isRegistering) return;
 
     var btn = document.getElementById('registerBtn');
     var alertEl = document.getElementById('registerAlert');
@@ -56,6 +86,7 @@ function handleRegister(event) {
     }
 
     if (!valid) {
+        isRegistering = false;
         showAlert('registerAlert', 'Please check the highlighted fields above and correct all errors.', 'error');
         // Smoothly scroll to the first field with an error so user immediately sees what is needed
         var firstError = document.querySelector('.form-group.error, .error-message.show, input.error, select.error');
@@ -73,6 +104,7 @@ function handleRegister(event) {
 
     var strText = document.getElementById('regPasswordStrengthText');
     if (strText && strText.textContent === 'Weak') {
+        isRegistering = false;
         showAlert('registerAlert', 'Password is too weak. Weak passwords cannot be submitted.', 'error');
         var pwd = document.getElementById('regPassword');
         if (pwd) pwd.classList.add('error');
@@ -99,10 +131,10 @@ function handleRegister(event) {
 
     var consentEl = document.getElementById('regConsent');
 
-    // Get Cloudflare Turnstile token
-    var turnstileInput = document.querySelector('[name="cf-turnstile-response"]');
-    var turnstileToken = turnstileInput ? turnstileInput.value : '';
-    if (!turnstileToken) {
+    // Get Google reCAPTCHA v2 token immediately
+    var captchaToken = getRegCaptchaToken();
+    if (!captchaToken) {
+        isRegistering = false;
         showAlert('registerAlert', 'Please complete the CAPTCHA verification.', 'error');
         var topAlert = document.getElementById('registerAlert');
         if (topAlert) topAlert.scrollIntoView({ behavior: 'smooth', block: 'center' });
@@ -114,6 +146,7 @@ function handleRegister(event) {
     var q2 = document.getElementById('regQSelect2') ? document.getElementById('regQSelect2').value : 'Q2';
     var q3 = document.getElementById('regQSelect3') ? document.getElementById('regQSelect3').value : 'Q3';
     if (document.getElementById('regQSelect1') && (q1 === q2 || q1 === q3 || q2 === q3)) {
+        isRegistering = false;
         showAlert('registerAlert', 'Please select 3 different security questions.', 'error');
         return;
     }
@@ -151,11 +184,14 @@ function handleRegister(event) {
         income_bracket: document.getElementById('regIncome') ? document.getElementById('regIncome').value : '',
         monthly_budget: parseFloat(getVal('regBudget')) || 0,
         currency: 'PHP',
-        'cf-turnstile-response': turnstileToken,
-        captcha: turnstileToken || (captchaEl ? captchaEl.value.trim() : ''),
+        'cf-turnstile-response': captchaToken,
+        'g-recaptcha-response': captchaToken,
+        captcha: captchaToken,
+        csrf_token: (document.getElementById('csrfToken') ? document.getElementById('csrfToken').value : ''),
         consent: !!(consentEl && consentEl.checked)
     };
 
+    isRegistering = true;
     if (btn) {
         btn.disabled = true;
         btn.textContent = 'Creating account...';
@@ -176,6 +212,7 @@ function handleRegister(event) {
         });
     })
     .then(function(res) {
+        isRegistering = false;
         if (btn) {
             btn.disabled = false;
             btn.textContent = 'Create Account';
@@ -188,8 +225,11 @@ function handleRegister(event) {
             var topAlert = document.getElementById('registerAlert');
             if (topAlert) topAlert.scrollIntoView({ behavior: 'smooth', block: 'center' });
             if (typeof refreshCaptcha === 'function') refreshCaptcha('captchaImg');
-            // Reset Turnstile widget on error
-            if (window.turnstile) window.turnstile.reset();
+            // Reset CAPTCHA widget on error
+            if (window.grecaptcha) {
+                window.grecaptcha.reset();
+                window._regRecaptchaToken = '';
+            }
             return;
         }
 
@@ -222,6 +262,7 @@ function handleRegister(event) {
         }
     })
     .catch(function(error) {
+        isRegistering = false;
         if (btn) {
             btn.disabled = false;
             btn.textContent = 'Create Account';
@@ -305,6 +346,20 @@ function handleResendOtp() {
         var msg = data.message || 'New verification code sent to your Gmail! It will expire in 5 minutes.';
         showAlert('verifyAlert', msg, 'success');
         startOtpTimer(CONFIG.OTP_EXPIRY_MINUTES * 60);
+
+        // Section 6.2 rule 6: 60-second cooldown with visible countdown
+        if (resendBtn) {
+            var cooldown = 60;
+            resendBtn.disabled = true;
+            var cdInterval = setInterval(function() {
+                resendBtn.textContent = 'Resend in ' + cooldown + 's';
+                if (--cooldown < 0) {
+                    clearInterval(cdInterval);
+                    resendBtn.disabled = false;
+                    resendBtn.textContent = 'Resend Code';
+                }
+            }, 1000);
+        }
     })
     .catch(function(err) {
         if (resendBtn) {
@@ -419,6 +474,40 @@ document.addEventListener('DOMContentLoaded', function() {
     // Live username availability
     var uname = document.getElementById('regUsername');
     if (uname) {
+        // §4.9 Live username availability check while typing (debounced 400ms)
+        var _unameDebounce = null;
+        uname.addEventListener('input', function() {
+            clearTimeout(_unameDebounce);
+            var u = this.value.trim();
+            var err = document.getElementById('regUsernameError');
+            if (!u || u.length < (CONFIG.MIN_USERNAME || 6)) {
+                if (err) { err.classList.remove('show'); err.textContent = ''; }
+                uname.classList.remove('error');
+                return;
+            }
+            _unameDebounce = setTimeout(function() {
+                fetch(CONFIG.API_URL + '/username-available?u=' + encodeURIComponent(u), { credentials: 'include' })
+                    .then(function(r) { return r.json(); })
+                    .then(function(j) {
+                        var err = document.getElementById('regUsernameError');
+                        if (!err || !j || j.isServerError) return;
+                        if (j.taken) {
+                            uname.classList.add('error');
+                            err.textContent = 'Username is already taken.';
+                            err.classList.add('show');
+                        } else if (j.error && j.invalid_format) {
+                            uname.classList.add('error');
+                            err.textContent = j.error;
+                            err.classList.add('show');
+                        } else if (j.available === true) {
+                            uname.classList.remove('error');
+                            err.classList.remove('show');
+                            err.textContent = '';
+                        }
+                    }).catch(function() {});
+            }, 400);
+        });
+
         uname.addEventListener('blur', function() {
             var u = this.value.trim();
             if (!u || u.length < (CONFIG.MIN_USERNAME || 7)) return;

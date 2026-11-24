@@ -953,6 +953,9 @@
         <nav>
             <h2>Expense Tracker</h2>
             <div class="user-area">
+                <!-- Handout §3.2: Logged-in page: Home | Log-out -->
+                <a href="/HTML/dashboard.html" style="color: var(--text-muted); font-size: 14px; text-decoration: none; font-weight: 600; margin-right: 6px;">Home</a>
+                <span style="color: #a3b8af; font-size: 13px; margin-right: 8px;">|</span>
                 <span id="userDisplay">user@expensetracker.com</span>
                 <button type="button" id="settingsBtn" class="theme-btn" onclick="openSettingsModal()" title="Settings & Safe Data Management">
                     ⚙️ Settings
@@ -2211,5 +2214,10 @@
             loadDashboardData();
         });
     </script>
+
+    <!-- Page Copyright Footer (Handout §3.1) -->
+    <footer class="site-footer" style="text-align: center; padding: 25px 15px; font-size: 13px; color: var(--muted); width: 100%;">
+        <p>&copy; 2026 Chan Troso. All rights reserved.</p>
+    </footer>
 </body>
 </html>

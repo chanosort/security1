@@ -8,9 +8,26 @@
     <meta name="apple-mobile-web-app-status-bar-style" content="default">
     <title>ExpenseTracker - Register</title>
     <link rel="stylesheet" href="../CSS/style2.css">
-    <script src="https://challenges.cloudflare.com/turnstile/v0/api.js" async defer></script>
+    <!-- Google reCAPTCHA v2 -->
+    <script>
+        window._regRecaptchaToken = '';
+        window.onRegRecaptchaSuccess = function(t) {
+            window._regRecaptchaToken = t;
+            var errEl = document.getElementById('regCaptchaError');
+            if (errEl) { errEl.textContent = ''; errEl.classList.remove('show'); }
+            var topAlert = document.getElementById('registerAlert');
+            if (topAlert && topAlert.textContent && topAlert.textContent.indexOf('CAPTCHA') !== -1) {
+                topAlert.classList.remove('show');
+            }
+        };
+        window.onRegRecaptchaExpired = function() {
+            window._regRecaptchaToken = '';
+        };
+    </script>
+    <script src="https://www.google.com/recaptcha/api.js" async defer></script>
 </head>
 <body>
+
     <div class="container">
         <div class="header">
             <h1>ExpenseTracker</h1>
@@ -20,10 +37,19 @@
         <div class="form-container active" id="registerForm">
             <!-- Registration Form -->
             <form id="registerFormElement" onsubmit="handleRegister(event)" novalidate>
+                <!-- CSRF Token (Protection 3) -->
+                <input type="hidden" name="csrf_token" id="csrfToken" value="">
+
                 <div class="alert" id="registerAlert"></div>
 
                 <!-- Honeypot (bot detection) -->
                 <input type="text" name="website" id="website" style="display:none !important;" tabindex="-1" autocomplete="off">
+
+                <!-- Section 1: Personal Information -->
+                <div class="form-section-title">
+                    <span class="step-num">1</span>
+                    <span>Personal Information</span>
+                </div>
 
                 <!-- ID Number -->
                 <div class="form-group">
@@ -81,6 +107,12 @@
                     </div>
                 </div>
 
+                <!-- Section 2: Residential Address -->
+                <div class="form-section-title">
+                    <span class="step-num">2</span>
+                    <span>Residential Address</span>
+                </div>
+
                 <!-- Address: Purok & Barangay -->
                 <div class="form-row">
                     <div class="form-group">
@@ -123,41 +155,54 @@
                     </div>
                 </div>
 
+                <!-- Section 3: Account Credentials -->
+                <div class="form-section-title">
+                    <span class="step-num">3</span>
+                    <span>Account Credentials</span>
+                </div>
+
                 <!-- Account: Email & Username -->
-                <div class="form-group">
-                    <label for="regEmail">Email Address <span class="req">*</span></label>
-                    <input type="email" id="regEmail" placeholder="e.g. juan@example.com" maxlength="100" required>
-                    <div class="error-message" id="regEmailError"></div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="regEmail">Email Address <span class="req">*</span></label>
+                        <input type="email" id="regEmail" placeholder="e.g. juan@example.com" maxlength="100" required>
+                        <div class="error-message" id="regEmailError"></div>
+                    </div>
+                    <div class="form-group">
+                        <label for="regUsername">Username (6-20 chars) <span class="req">*</span></label>
+                        <input type="text" id="regUsername" placeholder="e.g. juandelacruz1" maxlength="20" required>
+                        <div class="error-message" id="regUsernameError"></div>
+                    </div>
                 </div>
 
-                <div class="form-group">
-                    <label for="regUsername">Username (6-20 characters, start with letter) <span class="req">*</span></label>
-                    <input type="text" id="regUsername" placeholder="e.g. juandelacruz1" maxlength="20" required>
-                    <div class="error-message" id="regUsernameError"></div>
+                <!-- Password and Confirm Password in 2-column row -->
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="regPassword">Password (min 8 chars) <span class="req">*</span></label>
+                        <div class="input-wrapper">
+                            <input type="password" id="regPassword" placeholder="New password" required minlength="8" maxlength="64">
+                            <button type="button" class="toggle-password" onclick="togglePassword('regPassword', this)">Show</button>
+                        </div>
+                        <div class="password-strength">
+                            <div class="bar" id="regPasswordStrengthBar"></div>
+                        </div>
+                        <div class="strength-text" id="regPasswordStrengthText"></div>
+                        <div class="error-message" id="regPasswordError"></div>
+                    </div>
+                    <div class="form-group">
+                        <label for="regConfirmPassword">Confirm Password <span class="req">*</span></label>
+                        <div class="input-wrapper">
+                            <input type="password" id="regConfirmPassword" placeholder="Confirm password" required minlength="8" maxlength="64">
+                            <button type="button" class="toggle-password" onclick="togglePassword('regConfirmPassword', this)">Show</button>
+                        </div>
+                        <div class="error-message" id="regConfirmPasswordError"></div>
+                    </div>
                 </div>
 
-                <!-- Password -->
-                <div class="form-group">
-                    <label for="regPassword">Password (minimum 8 characters) <span class="req">*</span></label>
-                    <div class="input-wrapper">
-                        <input type="password" id="regPassword" placeholder="New password" required minlength="8" maxlength="64">
-                        <button type="button" class="toggle-password" onclick="togglePassword('regPassword', this)">Show</button>
-                    </div>
-                    <div class="password-strength">
-                        <div class="bar" id="regPasswordStrengthBar"></div>
-                    </div>
-                    <div class="strength-text" id="regPasswordStrengthText"></div>
-                    <div class="error-message" id="regPasswordError"></div>
-                </div>
-
-                <!-- Confirm Password -->
-                <div class="form-group">
-                    <label for="regConfirmPassword">Confirm Password <span class="req">*</span></label>
-                    <div class="input-wrapper">
-                        <input type="password" id="regConfirmPassword" placeholder="Confirm password" required minlength="8" maxlength="64">
-                        <button type="button" class="toggle-password" onclick="togglePassword('regConfirmPassword', this)">Show</button>
-                    </div>
-                    <div class="error-message" id="regConfirmPasswordError"></div>
+                <!-- Section 4: Security Questions -->
+                <div class="form-section-title">
+                    <span class="step-num">4</span>
+                    <span>Account Recovery Questions</span>
                 </div>
 
                 <!-- Security Questions (Section 5 Question Bank - Pick 3 Different Questions) -->
@@ -210,6 +255,12 @@
                     </div>
                 </fieldset>
 
+                <!-- Section 5: Financial Profile -->
+                <div class="form-section-title">
+                    <span class="step-num">5</span>
+                    <span>Financial Profile</span>
+                </div>
+
                 <div class="form-row">
                     <div class="form-group">
                         <label for="regIncome">Monthly Income Bracket <span class="req">*</span></label>
@@ -229,27 +280,39 @@
                     </div>
                 </div>
 
-                <!-- CAPTCHA (Cloudflare Turnstile) -->
+                <!-- Section 6: Security Verification -->
+                <div class="form-section-title">
+                    <span class="step-num">6</span>
+                    <span>Security Verification</span>
+                </div>
+
+                <!-- Google reCAPTCHA v2 -->
                 <div class="form-group">
                     <label>Security Verification <span class="req">*</span></label>
-                    <div style="display: flex; justify-content: center;">
-                        <div class="cf-turnstile" data-sitekey="0x4AAAAAAGCzxZKx5kkHGIA5"></div>
+                    <div style="display: flex; justify-content: center; margin: 10px 0;">
+                        <div class="g-recaptcha" 
+                             data-sitekey="6Lfamy4uAAAAAL1UwtY0wE-9sURICDcHc8zRFq_O" 
+                             data-callback="onRegRecaptchaSuccess"
+                             data-expired-callback="onRegRecaptchaExpired"></div>
                     </div>
                     <div class="error-message" id="regCaptchaError"></div>
                 </div>
 
-                <!-- Privacy Consent -->
-                <div class="form-group" style="margin-top: 15px;">
-                    <label style="font-weight: normal; cursor: pointer; display: flex; align-items: flex-start; gap: 8px;">
-                        <input type="checkbox" id="regConsent" required style="margin-top: 2px;">
-                        <span>I agree to the <a href="/HTML/privacy.html" target="_blank" style="color: var(--green-700); font-weight: 700;">Privacy Notice</a> under RA 10173 (Data Privacy Act of 2012) <span class="req">*</span></span>
+                <!-- Privacy Consent (Centered) - Handout §4.3 Exact Wording -->
+                <div class="form-group" style="margin-top: 20px; display: flex; flex-direction: column; align-items: center; text-align: center;">
+                    <label style="font-weight: normal; cursor: pointer; display: inline-flex; align-items: center; justify-content: center; gap: 8px; font-size: 13px;">
+                        <input type="checkbox" id="regConsent" required style="width: 16px; height: 16px; margin: 0; cursor: pointer;">
+                        <span>I have read the <a href="/HTML/privacy.html" target="_blank" style="color: var(--green-700); font-weight: 700;">Privacy Notice</a> and agree to the collection and processing of my personal data in accordance with the Data Privacy Act of 2012 (RA 10173). <span class="req">*</span></span>
                     </label>
-                    <div class="error-message" id="regConsentError"></div>
+                    <div class="error-message" id="regConsentError" style="text-align: center;"></div>
                 </div>
 
-                <button type="submit" class="btn-primary" id="registerBtn">Create Account</button>
+                <!-- Centered Compact Button (Not Lengthy) - 1-Click Functional -->
+                <div style="display: flex; justify-content: center; margin-top: 15px;">
+                    <button type="submit" class="btn-primary" id="registerBtn" onclick="handleRegister(event)" style="max-width: 260px; width: 100%;">Create Account</button>
+                </div>
 
-                <div class="form-footer">
+                <div class="form-footer" style="text-align: center; margin-top: 18px;">
                     <span>Already have an account?</span>
                     <a href="/HTML/index.html">Log In</a>
                 </div>
@@ -286,6 +349,11 @@
         </div>
 
         <div class="security-badge">Your data is encrypted and secure</div>
+
+        <!-- Copyright Footer (Handout §3.1) -->
+        <footer class="site-footer">
+            <p>&copy; 2026 Chan Troso. All rights reserved.</p>
+        </footer>
     </div>
 
     <script src="../JS/config.js"></script>

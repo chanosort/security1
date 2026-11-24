@@ -1,4 +1,4 @@
-original<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
@@ -8,14 +8,16 @@ original<!DOCTYPE html>
     <meta name="apple-mobile-web-app-status-bar-style" content="default">
     <title>ExpenseTracker - Forgot Password</title>
     <link rel="stylesheet" href="/CSS/style2.css">
-    <script src="https://challenges.cloudflare.com/turnstile/v0/api.js" async defer></script>
+    <!-- Google reCAPTCHA v2 -->
+    <script src="https://www.google.com/recaptcha/api.js" async defer></script>
     <style>
         /* Hides labels to keep your original floating placeholder look */
         .form-group label { display: none; }
     </style>
 </head>
 <body>
-    <div class="container">
+
+    <div class="container" style="max-width: 420px; margin: 0 auto;">
         <div class="header">
             <h1>ExpenseTracker</h1>
             <p>Reset your password</p>
@@ -27,17 +29,22 @@ original<!DOCTYPE html>
             <div id="step1">
                 <div class="form-group">
                     <label>Email or Username</label>
-                    <input type="text" id="identifier" placeholder="Email or Username" required>
+                    <input type="text" id="identifier" placeholder="Email or Username" required onkeydown="if(event.key==='Enter'){event.preventDefault(); identify();}">
                 </div>
                 
                 <div class="form-group" style="margin-bottom: 0;">
                     <label>Security Check</label>
-                    <div style="display: flex; justify-content: center;">
-                        <div class="cf-turnstile" data-sitekey="0x4AAAAAAGCzxZKx5kkHGIA5"></div>
+                    <div style="display: flex; justify-content: center; margin: 12px 0;">
+                        <div class="g-recaptcha" 
+                             data-sitekey="6Lfamy4uAAAAAL1UwtY0wE-9sURICDcHc8zRFq_O"
+                             data-callback="onForgotRecaptchaSuccess"
+                             data-expired-callback="onForgotRecaptchaExpired"></div>
                     </div>
                 </div>
                 
-                <button class="btn-primary" onclick="identify()">Continue</button>
+                <div style="display: flex; justify-content: center; margin-top: 15px;">
+                    <button type="button" class="btn-primary" id="continueBtn" onclick="identify()" style="max-width: 240px; width: 100%;">Continue</button>
+                </div>
             </div>
 
             <!-- Step 2: Questions (Handout Section 10: Choose 1 of 3 registered questions) -->
@@ -92,50 +99,123 @@ original<!DOCTYPE html>
             </div>
         </div>
         <div class="security-badge">Your data is encrypted and secure</div>
+
+        <!-- Copyright Footer (Handout §3.1) -->
+        <footer class="site-footer">
+            <p>&copy; 2026 Chan Troso. All rights reserved.</p>
+        </footer>
     </div>
 
     <script>
         let ident='', resetToken='', changeToken='';
+        let isIdentifying = false;
+        window._forgotRecaptchaToken = '';
+
+        window.onForgotRecaptchaSuccess = function(t) {
+            window._forgotRecaptchaToken = t;
+            const el = document.getElementById('msg');
+            if (el) el.className = 'alert';
+        };
+
+        window.onForgotRecaptchaExpired = function() {
+            window._forgotRecaptchaToken = '';
+        };
+
+        function getForgotCaptchaToken() {
+            if (window._forgotRecaptchaToken) return window._forgotRecaptchaToken;
+            if (typeof grecaptcha !== 'undefined' && grecaptcha.getResponse) {
+                const resp = grecaptcha.getResponse();
+                if (resp) return resp;
+            }
+            const el = document.querySelector('[name="g-recaptcha-response"]');
+            if (el && el.value) return el.value;
+            return '';
+        }
         
         function msg(t){ 
             const el = document.getElementById('msg');
+            if (!el) return;
             el.textContent = t; 
             el.className = 'alert alert-error show';
         }
         
         async function identify(){
-            ident = document.getElementById('identifier').value.trim();
-            const tokenInput = document.querySelector('[name="cf-turnstile-response"]');
-            const cap = tokenInput ? tokenInput.value : '';
+            if (isIdentifying) return;
 
-            if(!ident || !cap) { msg("Please complete the security check."); return; }
-
-            const r = await fetch('/api/forgot/identify',{method:'POST',headers:{'Content-Type':'application/json'},
-                body: JSON.stringify({identifier: ident, 'cf-turnstile-response': cap})});
-            const j = await r.json();
-            
-            if (!r.ok){ 
-                msg(j.error||'Error'); 
-                if (window.turnstile) window.turnstile.reset();
-                return; 
+            ident = (document.getElementById('identifier')?.value || '').trim();
+            if (!ident) {
+                msg("Please enter your email or username.");
+                document.getElementById('identifier')?.focus();
+                return;
             }
-            
-            const qSel = document.getElementById('chooseQuestion');
-            if (qSel) {
-                qSel.innerHTML = '';
-                j.questions.forEach(x => {
-                    const opt = document.createElement('option');
-                    opt.value = x.question_code;
-                    opt.textContent = x.question_text;
-                    qSel.appendChild(opt);
+
+            const cap = getForgotCaptchaToken();
+            if (!cap) {
+                msg("Please complete the security check.");
+                return;
+            }
+
+            const btn = document.getElementById('continueBtn');
+            isIdentifying = true;
+            if (btn) {
+                btn.disabled = true;
+                btn.textContent = 'Verifying...';
+            }
+
+            try {
+                const r = await fetch('/api/forgot/identify', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({identifier: ident, 'g-recaptcha-response': cap, 'captcha': cap})
                 });
+                const j = await r.json();
+                
+                if (!r.ok){ 
+                    msg(j.error || 'Verification failed. Please try again.'); 
+                    if (typeof grecaptcha !== 'undefined' && grecaptcha.reset) {
+                        grecaptcha.reset();
+                    }
+                    window._forgotRecaptchaToken = '';
+                    if (btn) {
+                        btn.disabled = false;
+                        btn.textContent = 'Continue';
+                    }
+                    isIdentifying = false;
+                    return; 
+                }
+                
+                const qSel = document.getElementById('chooseQuestion');
+                if (qSel && j.questions) {
+                    qSel.innerHTML = '';
+                    const seen = new Set();
+                    j.questions.forEach(x => {
+                        const code = x.question_code || x.code;
+                        const text = x.question_text || x.text;
+                        if (code && !seen.has(code)) {
+                            seen.add(code);
+                            const opt = document.createElement('option');
+                            opt.value = code;
+                            opt.textContent = text;
+                            qSel.appendChild(opt);
+                        }
+                    });
+                }
+                document.getElementById('step1').style.display = 'none';
+                document.getElementById('step2').style.display = 'block';
+                document.getElementById('msg').className = 'alert';
+            } catch(err) {
+                msg('Network error. Please try again.');
+                if (btn) {
+                    btn.disabled = false;
+                    btn.textContent = 'Continue';
+                }
+                isIdentifying = false;
             }
-            document.getElementById('step1').style.display='none';
-            document.getElementById('step2').style.display='block';
-            document.getElementById('msg').className = 'alert';
         }
         
+        let isSubmittingAnswers = false;
         async function submitAnswers(){
+            if (isSubmittingAnswers) return;
             const qSel = document.getElementById('chooseQuestion');
             const selCode = qSel ? qSel.value : '';
             const ans = (document.getElementById('yourAnswer')?.value || '').trim();
@@ -144,23 +224,47 @@ original<!DOCTYPE html>
             if (!ans) { msg("Please provide your answer."); return; }
             if (ans !== ans2) { msg("Answers do not match."); return; }
 
-            const r = await fetch('/api/forgot/answer',{method:'POST',headers:{'Content-Type':'application/json'},
-                body: JSON.stringify({identifier: ident, question_code: selCode, answer: ans, answers: { [selCode]: ans }})});
-            const j = await r.json();
-            
-            if (!r.ok){ msg(j.error||'Error'); return; }
-            
-            resetToken = j.reset_token;
-            // Never pre-fill the OTP code - user must retrieve it from Gmail
-            const otpInput = document.getElementById('otpCode');
-            if (otpInput) otpInput.value = '';
-            document.getElementById('msg').className = 'alert alert-success show';
-            document.getElementById('msg').textContent = j.message;
-            document.getElementById('step2').style.display='none';
-            document.getElementById('step3').style.display='block';
-            if (otpInput) otpInput.focus();
+            const submitBtn = document.querySelector('#step2 .btn-primary');
+            isSubmittingAnswers = true;
+            if (submitBtn) {
+                submitBtn.disabled = true;
+                submitBtn.textContent = 'Verifying...';
+            }
 
-            startForgotTimer();
+            try {
+                const r = await fetch('/api/forgot/answer',{method:'POST',headers:{'Content-Type':'application/json'},
+                    body: JSON.stringify({identifier: ident, question_code: selCode, answer: ans, answers: { [selCode]: ans }})});
+                const j = await r.json();
+                
+                if (!r.ok){ 
+                    msg(j.error||'Error'); 
+                    if (submitBtn) {
+                        submitBtn.disabled = false;
+                        submitBtn.textContent = 'Verify Answer';
+                    }
+                    isSubmittingAnswers = false;
+                    return; 
+                }
+                
+                resetToken = j.reset_token;
+                // Never pre-fill the OTP code - user must retrieve it from Gmail
+                const otpInput = document.getElementById('otpCode');
+                if (otpInput) otpInput.value = '';
+                document.getElementById('msg').className = 'alert alert-success show';
+                document.getElementById('msg').textContent = j.message;
+                document.getElementById('step2').style.display='none';
+                document.getElementById('step3').style.display='block';
+                if (otpInput) otpInput.focus();
+
+                startForgotTimer();
+            } catch(e) {
+                msg('Network error. Please try again.');
+                if (submitBtn) {
+                    submitBtn.disabled = false;
+                    submitBtn.textContent = 'Verify Answer';
+                }
+                isSubmittingAnswers = false;
+            }
         }
 
         function startForgotTimer() {
@@ -267,7 +371,10 @@ original<!DOCTYPE html>
             document.getElementById('step4').style.display='block';
         }
         
+        let isChangingPw = false;
         async function changePw(){
+            if (isChangingPw) return;
+
             const pw = document.getElementById('newPw').value;
             const pw2 = document.getElementById('newPw2').value;
             if (pw.length < 8) {
@@ -278,20 +385,33 @@ original<!DOCTYPE html>
                 msg("Mismatch Password");
                 return;
             }
-            const r = await fetch('/api/change-password',{method:'POST',headers:{'Content-Type':'application/json'},
-                body: JSON.stringify({
-                    change_token: changeToken,
-                    password: pw,
-                    confirm_password: pw2
-                })});
-            const j = await r.json();
-            
-            if (r.ok) {
-                document.getElementById('msg').className = 'alert alert-success show';
-                document.getElementById('msg').textContent = j.message || 'Successfully Change Password';
-                setTimeout(()=>location.href='/', 1500);
-            } else {
-                msg(j.error);
+
+            const btn = document.querySelector('#step4 .btn-primary');
+            isChangingPw = true;
+            if (btn) { btn.disabled = true; btn.textContent = 'Changing...'; }
+
+            try {
+                const r = await fetch('/api/change-password',{method:'POST',headers:{'Content-Type':'application/json'},
+                    body: JSON.stringify({
+                        change_token: changeToken,
+                        password: pw,
+                        confirm_password: pw2
+                    })});
+                const j = await r.json();
+                
+                if (r.ok) {
+                    document.getElementById('msg').className = 'alert alert-success show';
+                    document.getElementById('msg').textContent = j.message || 'Successfully Change Password';
+                    setTimeout(()=>location.href='/', 1500);
+                } else {
+                    msg(j.error);
+                    if (btn) { btn.disabled = false; btn.textContent = 'Change Password'; }
+                    isChangingPw = false;
+                }
+            } catch(e) {
+                msg('Network error. Please try again.');
+                if (btn) { btn.disabled = false; btn.textContent = 'Change Password'; }
+                isChangingPw = false;
             }
         }
     </script>

@@ -28,9 +28,19 @@ function clearAuthData() {
 function logout() {
     if (confirm('Are you sure you want to logout?')) {
         clearAuthData();
-        window.location.href = '/HTML/index.html';
+        window.location.replace('/HTML/index.html');
     }
 }
+
+// Handout §8.4: Session & Back button protection
+// Ensures hitting browser Back button after logout never displays protected page
+window.addEventListener('pageshow', function(event) {
+    if (window.location.pathname.includes('dashboard.html')) {
+        if (!isAuthenticated()) {
+            window.location.replace('/HTML/index.html');
+        }
+    }
+});
 
 // ============================================
 // IDLE SESSION TIMEOUT (Handout §8.4: 15 min, warn 1 min before)

@@ -8,7 +8,8 @@
     <meta name="apple-mobile-web-app-status-bar-style" content="default">
     <title>ExpenseTracker - Log In</title>
     <link rel="stylesheet" href="/CSS/style.css">
-    <script src="https://challenges.cloudflare.com/turnstile/v0/api.js" async defer></script>
+    <!-- Google reCAPTCHA v2 -->
+    <script src="https://www.google.com/recaptcha/api.js" async defer></script>
     <style>
         /* Visually hides the required labels so your original placeholder design stays clean */
         .form-group label {
@@ -17,6 +18,7 @@
     </style>
 </head>
 <body>
+
     <div class="container">
         <div class="header">
             <h1>ExpenseTracker</h1>
@@ -26,6 +28,9 @@
         <div class="form-container active" id="loginForm">
             <!-- Step 1: Login credentials -->
             <form id="loginFormElement" onsubmit="handleLogin(event)" novalidate>
+                <!-- CSRF Token (Protection 3) -->
+                <input type="hidden" name="csrf_token" id="csrfToken" value="">
+
                 <div class="alert" id="loginAlert"></div>
 
                 <div class="form-group">
@@ -43,24 +48,25 @@
                     <div class="error-message" id="loginPasswordError">Please enter your password.</div>
                 </div>
 
-                <!-- CAPTCHA (Cloudflare Turnstile) -->
+                <!-- Google reCAPTCHA v2 -->
                 <div style="display: flex; justify-content: center; margin-bottom: 22px;">
-                    <div class="cf-turnstile" data-sitekey="0x4AAAAAAGCzxZKx5kkHGIA5"></div>
+                    <div class="g-recaptcha" data-sitekey="6Lfamy4uAAAAAL1UwtY0wE-9sURICDcHc8zRFq_O" data-callback="onRecaptchaSuccess"></div>
                 </div>
 
-                <button type="submit" class="btn-primary" id="loginBtn">Log In</button>
+                <button type="submit" class="btn-primary" id="loginBtn" onclick="handleLogin(event)">Log In</button>
                 
                 <div id="lockoutBanner" class="alert alert-error" style="display:none; margin-top: 15px;"></div>
 
-                <div class="form-footer">
-                    <a href="#" id="forgotLink" onclick="event.preventDefault(); location.href='/HTML/forgot.html'">Forgot password?</a>
+                <div class="form-footer" id="loginFormFooter">
+                    <a href="/HTML/forgot.html" id="forgotLink">Forgot password?</a>
                     <span class="divider">|</span>
-                    <a href="/HTML/registration.html">Create New Account</a>
+                    <a href="/HTML/registration.html" id="createAccountLink">Create New Account</a>
                 </div>
             </form>
 
             <!-- Step 2: OTP Verification (Handout Requirement) -->
             <form id="otpForm" style="display:none" onsubmit="handleOtp(event)">
+                <input type="hidden" name="csrf_token" id="csrfTokenOtp" value="">
                 <div class="alert" id="otpAlert"></div>
                 <div class="form-group">
                     <label>6-digit code</label>
@@ -78,6 +84,11 @@
         </div>
         
         <div class="security-badge">Your data is encrypted and secure</div>
+
+        <!-- Copyright Footer (Handout §3.1) -->
+        <footer class="site-footer">
+            <p>&copy; 2026 Chan Troso. All rights reserved.</p>
+        </footer>
     </div>
 
     <script src="/JS/config.js"></script>

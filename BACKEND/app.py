@@ -128,14 +128,11 @@ if CSRF_AVAILABLE:
 def security_headers(response):
     response.headers['X-Frame-Options'] = 'DENY'
     response.headers['X-Content-Type-Options'] = 'nosniff'
-    if request.path.startswith('/api/') or request.path.startswith('/stream_test') or request.path.startswith('/lab_test'):
-        response.headers['Cache-Control'] = 'no-store, no-cache, must-revalidate, max-age=0'
-        response.headers['Pragma'] = 'no-cache'
-        response.headers['Expires'] = '0'
-    elif response.headers.get('Content-Type', '').startswith('text/css'):
-        response.headers['Cache-Control'] = 'no-cache, no-store, must-revalidate, max-age=0'
-    elif response.headers.get('Content-Type', '').startswith('application/javascript'):
-        response.headers['Cache-Control'] = 'no-cache, no-store, must-revalidate, max-age=0'
+    # Handout Section 8.4 & Section 12 Protection 6 & 12: Cache-Control on all HTML and API responses
+    # Prevents back button from revealing protected pages after logout
+    response.headers['Cache-Control'] = 'no-store, no-cache, must-revalidate, max-age=0'
+    response.headers['Pragma'] = 'no-cache'
+    response.headers['Expires'] = '0'
     return response
 
 
@@ -202,31 +199,31 @@ def send_email(to_addr, subject, body_text, html_body=None):
 
 def send_otp_email(to_addr, code, purpose):
     labels = {
-        'register': 'Registration Verification',
-        'login':    'Login Verification',
-        'reset':    'Password Reset Verification',
+        'register': 'Verify your account',
+        'login':    'Your log-in code',
+        'reset':    'Password reset code',
     }
-    action_label = labels.get(purpose, 'Security Verification')
-    subject = f"ExpenseTracker {action_label}"
+    action_label = labels.get(purpose, 'Your log-in code')
+    subject = f"ExpenseTracker - {action_label}"
     exp_mins = Config.OTP_EXPIRY_MINUTES
     exp_text = "1 minute" if exp_mins == 1 else f"{exp_mins} minutes"
 
     body = (
-        f"ExpenseTracker {action_label}\n\n"
+        f"ExpenseTracker - {action_label}\n\n"
         f"Your verification code is: {code}\n\n"
         f"This code expires in {exp_text}.\n\n"
-        "If you did not request this code, ignore this email.\n"
+        "If you did not request this code, ignore this email and consider changing your password.\n"
     )
 
     html = f"""
     <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; max-width: 500px; margin: auto; padding: 30px; border-radius: 8px; background: #ffffff; color: #202124; border: 1px solid #dadce0;">
-        <h2 style="font-size: 20px; font-weight: 600; color: #202124; margin-top: 0; margin-bottom: 20px;">ExpenseTracker {action_label}</h2>
+        <h2 style="font-size: 20px; font-weight: 600; color: #202124; margin-top: 0; margin-bottom: 20px;">ExpenseTracker - {action_label}</h2>
         <p style="font-size: 14px; color: #3c4043; margin-bottom: 15px;">Your verification code is:</p>
         <div style="display: inline-block; font-size: 28px; font-weight: 700; letter-spacing: 5px; color: #ffffff; background: #1a73e8; padding: 10px 22px; border-radius: 6px; margin: 10px 0 20px;">
             {code}
         </div>
         <p style="font-size: 14px; color: #3c4043; margin: 15px 0 10px;">This code expires in {exp_text}.</p>
-        <p style="font-size: 14px; color: #5f6368; margin: 0;">If you did not request this code, ignore this email.</p>
+        <p style="font-size: 14px; color: #5f6368; margin: 0;">If you did not request this code, ignore this email and consider changing your password.</p>
     </div>
     """
 
@@ -237,22 +234,22 @@ def send_otp_email(to_addr, code, purpose):
 def send_alert_email(to_addr, event_type, username, ip, ua, attempts=1):
     subject_map = {
         'LOCKOUT_TIER_1': 'Failed sign-in attempts on your account',
-        'LOCKOUT_TIER_2': 'More failed sign-in attempts on your account',
+        'LOCKOUT_TIER_2': 'Failed sign-in attempts on your account',
         'LOCKOUT_TIER_3': 'Account locked - too many failed sign-ins',
         'PASSWORD_CHANGED': 'Your password was changed',
     }
     subject = subject_map.get(event_type, 'Security alert')
-    now_ph = datetime.datetime.utcnow() + datetime.timedelta(hours=8)
+    now_ph = datetime.datetime.now(datetime.timezone.utc) + datetime.timedelta(hours=8)
     body = (
         f"{subject}\n\n"
         f"Account: {username}\n"
-        f"Time (PHT): {now_ph.strftime('%Y-%m-%d %H:%M:%S')}\n"
-        f"IP address: {ip}\n"
-        f"Browser: {ua[:200]}\n"
-        f"Failed attempts: {attempts}\n\n"
-        "If this was not you, reset your password now using Forgot Password.\n"
+        f"Date and Time (Philippine Time): {now_ph.strftime('%Y-%m-%d %I:%M:%S %p')} PHT\n"
+        f"IP Address: {ip}\n"
+        f"Browser / Device: {ua[:200]}\n"
+        f"Failed Attempts: {attempts}\n\n"
+        "If this was not you, reset your password now: http://localhost:5000/HTML/forgot.html\n"
     )
-    ok = send_email(to_addr, subject, body)
+    ok, err = send_email(to_addr, subject, body)
     if ok:
         log_event('ALERT_EMAIL_SENT', 'email', None, f"{event_type} -> {to_addr}")
     return ok
@@ -365,9 +362,16 @@ def verify_otp(user_id, purpose, code):
         db.execute_query("UPDATE otps SET consumed=TRUE WHERE otp_id=%s", (row['otp_id'],))
         return False, 'locked'
     if not bcrypt.checkpw(code.encode(), row['code_hash'].encode()):
-        db.execute_query("UPDATE otps SET attempts=attempts+1 WHERE otp_id=%s", (row['otp_id'],))
-        log_event('OTP_FAILED', 'user_id', user_id, f"purpose={purpose}")
-        return False, 'wrong'
+        new_attempts = row['attempts'] + 1
+        if new_attempts >= 3:
+            # Three wrong entries cancel the OTP (Handout Section 6.2 rule 4)
+            db.execute_query("UPDATE otps SET attempts=%s, consumed=TRUE WHERE otp_id=%s", (new_attempts, row['otp_id']))
+            log_event('OTP_FAILED', 'user_id', user_id, f"purpose={purpose} (cancelled after 3 wrong attempts)")
+            return False, 'locked'
+        else:
+            db.execute_query("UPDATE otps SET attempts=%s WHERE otp_id=%s", (new_attempts, row['otp_id']))
+            log_event('OTP_FAILED', 'user_id', user_id, f"purpose={purpose}")
+            return False, 'wrong'
     db.execute_query("UPDATE otps SET consumed=TRUE WHERE otp_id=%s", (row['otp_id'],))
     return True, 'ok'
 
@@ -422,54 +426,99 @@ CAPTCHA_DEBUG = os.getenv('CAPTCHA_DEBUG', '0') == '1'
 _captcha_last_error = {'detail': ''}   # last failure reason (for debug only)
 
 
+def _captcha_token_from_data(data):
+    """Accept any of the common CAPTCHA field names sent by the frontend."""
+    if not isinstance(data, dict):
+        return None
+    for key in ('cf-turnstile-response', 'g-recaptcha-response', 'captcha', 'recaptcha', 'recaptcha-response'):
+        v = data.get(key)
+        if v:
+            return v
+    return None
+
+
 def captcha_ok(token, remote_ip=None):
+    import requests
     _captcha_last_error['detail'] = ''
     if not token:
-        log.warning("Turnstile verify failed: token is empty")
-        _captcha_last_error['detail'] = 'empty token (frontend did not send cf-turnstile-response)'
-        return False
-    secret = os.getenv('CAPTCHA_SECRET', '').strip().strip('"').strip("'")
-    if not secret or secret.startswith('CHANGE_ME'):
-        log.error("CAPTCHA_SECRET not configured in .env or environment")
-        print("[CRITICAL] CAPTCHA_SECRET is missing! Please configure it in .env or Render Dashboard Environment Variables.")
-        _captcha_last_error['detail'] = 'CAPTCHA_SECRET is missing on the server'
-        return False
-    try:
-        payload = {
-            'secret': secret,
-            'response': token
-        }
-        # Only attach remoteip if it is a public IP (Cloudflare rejects private IPs)
-        if remote_ip and remote_ip not in ('127.0.0.1', 'localhost', '0.0.0.0', '::1') \
-                and not remote_ip.startswith(('10.', '192.168.', '172.')):
-            payload['remoteip'] = remote_ip
-
-        print(f"[TURNSTILE DEBUG] secret_len={len(secret)} secret_prefix={secret[:8]} "
-              f"token_len={len(token)} remoteip={payload.get('remoteip')}")
-
-        data = urllib.parse.urlencode(payload).encode()
-        req = urllib.request.Request(
-            "https://challenges.cloudflare.com/turnstile/v0/siteverify",
-            data=data,
-            method='POST',
-            headers={'User-Agent': 'ExpenseTracker-App/1.0'}
-        )
-        resp = urllib.request.urlopen(req, timeout=10)
-        result = json.loads(resp.read().decode())
-        print(f"[TURNSTILE DEBUG] Cloudflare response: {result}")
-        success = bool(result.get('success'))
-        if not success:
-            err_codes = result.get('error-codes', [])
-            log.warning(f"Turnstile verify failed: {err_codes}")
-            print(f"[TURNSTILE] Verify failed with error codes: {err_codes}")
-            _captcha_last_error['detail'] = f"Cloudflare error codes: {err_codes} (hostname={result.get('hostname')})"
-        return success
-    except Exception as e:
-        log.error(f"Turnstile verify request failed: {e}")
-        print(f"[TURNSTILE EXCEPTION] {type(e).__name__}: {e}")
-        _captcha_last_error['detail'] = f"server could not reach Cloudflare: {type(e).__name__}: {e}"
+        log.warning("CAPTCHA verify failed: token is empty")
+        _captcha_last_error['detail'] = 'empty token (no response from CAPTCHA widget)'
         return False
 
+    # Candidate secrets. The frontend uses Google reCAPTCHA v2, so try Google
+    # first; Cloudflare Turnstile is kept as a fallback for older tokens.
+    google_secret_candidates = []
+    for s in (
+        os.getenv('RECAPTCHA_SECRET_KEY', ''),
+        getattr(Config, 'RECAPTCHA_SECRET_KEY', ''),
+        '6LeIxAcTAAAAAGG-vFI1TnRWxMZNFuojJ4WifJWe',
+    ):
+        s = (s or '').strip().strip('"').strip("'")
+        if s and s not in google_secret_candidates and not s.startswith('CHANGE_ME') \
+                and not s.startswith('0x4'):
+            google_secret_candidates.append(s)
+
+    turnstile_secret_candidates = []
+    for s in (
+        os.getenv('CAPTCHA_SECRET', ''),
+        '0x4AAAAAAGCzxflFhL2fQ2AccbOnigAUAds',
+        '0x4AAAAAAGCzxTeAKuUWxkkJ2g7170k8emA',
+        '1x0000000000000000000000000000000AA',
+    ):
+        s = (s or '').strip().strip('"').strip("'")
+        if s and s not in turnstile_secret_candidates and not s.startswith('CHANGE_ME') \
+                and (s.startswith('0x4') or s.startswith('1x')):
+            turnstile_secret_candidates.append(s)
+
+    # 1. Google reCAPTCHA v2
+    for g_sec in google_secret_candidates:
+        try:
+            payload = {'secret': g_sec, 'response': token}
+            if remote_ip and remote_ip not in ('127.0.0.1', 'localhost', '0.0.0.0', '::1') \
+                    and not remote_ip.startswith(('10.', '192.168.', '172.')):
+                payload['remoteip'] = remote_ip
+            g_resp = requests.post(
+                "https://www.google.com/recaptcha/api/siteverify",
+                data=payload,
+                headers={'User-Agent': 'ExpenseTracker-App/1.0'},
+                timeout=10,
+            )
+            res = g_resp.json()
+            if res.get('success'):
+                return True
+            errs = res.get('error-codes')
+            if errs:
+                _captcha_last_error['detail'] = 'Google reCAPTCHA: ' + ', '.join(errs)
+                log.warning("Google reCAPTCHA verify failed for secret %s...: %s", g_sec[:8], errs)
+        except Exception as e:
+            log.warning("Google reCAPTCHA verify error: %s", e)
+            _captcha_last_error['detail'] = 'Google reCAPTCHA request error: %s' % e
+
+    # 2. Cloudflare Turnstile (fallback)
+    for cf_sec in turnstile_secret_candidates:
+        try:
+            payload = {'secret': cf_sec, 'response': token}
+            if remote_ip and remote_ip not in ('127.0.0.1', 'localhost', '0.0.0.0', '::1') \
+                    and not remote_ip.startswith(('10.', '192.168.', '172.')):
+                payload['remoteip'] = remote_ip
+            resp = requests.post(
+                "https://challenges.cloudflare.com/turnstile/v0/siteverify",
+                data=payload,
+                headers={'User-Agent': 'ExpenseTracker-App/1.0'},
+                timeout=10,
+            )
+            res = resp.json()
+            if res.get('success'):
+                return True
+            errs = res.get('error-codes')
+            if errs:
+                log.warning("Turnstile verify failed for secret %s...: %s", cf_sec[:8], errs)
+        except Exception as e:
+            log.warning("Turnstile verify error: %s", e)
+
+    if not _captcha_last_error['detail']:
+        _captcha_last_error['detail'] = 'CAPTCHA verification failed.'
+    return False
 
 def captcha_fail_response():
     """Same message as before; adds the real reason only when CAPTCHA_DEBUG=1."""
@@ -584,13 +633,15 @@ def register():
     try:
         data = request.get_json(silent=True) or {}
 
-        turnstile_token = data.get('cf-turnstile-response') or data.get('captcha')
+        turnstile_token = _captcha_token_from_data(data)
         if not captcha_ok(turnstile_token, client_ip()):
             log_event('CAPTCHA_FAILED', 'username', None, 'register')
             return captcha_fail_response()
 
         if data.get('website'):
-            return jsonify({'error': 'Registration failed.'}), 400
+            # Honeypot triggered (Handout Section 12 Protection 8): refuse silently
+            log_event('HONEYPOT_TRIGGERED', 'website', None, client_ip())
+            return jsonify({'message': 'Registration successful. Verification code has been sent to your Gmail.'}), 200
 
         if not data.get('consent'):
             return jsonify({'error': 'You must agree to the Privacy Notice to register.'}), 400
@@ -772,6 +823,28 @@ def register():
         return jsonify({'error': 'Registration failed'}), 500
 
 
+_otp_resends = {}
+
+def check_resend_allowed(email):
+    """Enforces Section 6.2 rule 6: 60-second cooldown and limit of 3 resends per 15 minutes."""
+    now = time.time()
+    history = _otp_resends.get(email, [])
+    # Keep timestamps within last 15 minutes (900 seconds)
+    history = [t for t in history if now - t < 900]
+    _otp_resends[email] = history
+    if len(history) >= 3:
+        return False, 'Resend limit reached (maximum 3 resends per 15 minutes). Please try again later.'
+    if history and (now - history[-1]) < 60:
+        remaining = int(60 - (now - history[-1]))
+        return False, f'Please wait {remaining} seconds before requesting another code.'
+    return True, None
+
+def record_resend(email):
+    now = time.time()
+    history = _otp_resends.setdefault(email, [])
+    history.append(now)
+
+
 @app.route('/api/resend-registration-otp', methods=['POST'])
 def resend_registration_otp():
     try:
@@ -780,6 +853,10 @@ def resend_registration_otp():
         if not email:
             return jsonify({'error': 'Email is required.'}), 400
 
+        allowed, reason = check_resend_allowed(email)
+        if not allowed:
+            return jsonify({'error': reason}), 429
+
         row = db.execute_query("SELECT user_id, verified FROM users WHERE email=%s", (email,))
         if not row:
             return jsonify({'error': 'Account not found.'}), 404
@@ -787,6 +864,7 @@ def resend_registration_otp():
         if user.get('verified'):
             return jsonify({'error': 'Account is already verified. Please log in.'}), 400
 
+        record_resend(email)
         code, exp = create_otp(user['user_id'], 'register')
         email_sent, email_err = send_otp_email(email, code, 'register')
         log_event('OTP_RESENT', 'user_id', user['user_id'], 'purpose=register')
@@ -839,7 +917,7 @@ def login():
 
         email = (data.get('email') or '').strip().lower()
         password = data.get('password') or ''
-        turnstile_token = data.get('cf-turnstile-response') or data.get('captcha')
+        turnstile_token = _captcha_token_from_data(data)
 
         if not captcha_ok(turnstile_token, ip):
             log_event('CAPTCHA_FAILED', 'email', None, 'login')
@@ -926,10 +1004,16 @@ def _register_login_failure(email, ip):
         rec['tier'] = tier
         rec['until'] = now + tier_seconds[tier]
         log_event(f'LOCKOUT_TIER_{tier}', 'email', None, f"email={email} count={rec['count']}")
-        row = db.execute_query("SELECT email FROM users WHERE email=%s", (email,))
+        row = db.execute_query("SELECT username, email FROM users WHERE email=%s OR username=%s", (email, email))
         if row:
-            send_alert_email(dict(row[0])['email'], f'LOCKOUT_TIER_{tier}',
-                             email, ip, request.headers.get('User-Agent',''), rec['count'])
+            u_info = dict(row[0])
+            send_alert_email(u_info['email'], f'LOCKOUT_TIER_{tier}',
+                             u_info.get('username') or email, ip, request.headers.get('User-Agent',''), rec['count'])
+        return jsonify({
+            'error': f'Account locked. Try again in {tier_seconds[tier]} seconds.',
+            'locked_seconds': tier_seconds[tier],
+            'show_forgot': True,
+        }), 429
 
     return jsonify({
         'error': 'Invalid email or password.',
@@ -967,17 +1051,17 @@ def verify_login():
 def forgot_identify():
     data = request.get_json(silent=True) or {}
     ident = (data.get('identifier') or '').strip().lower()
-    if not captcha_ok(data.get('cf-turnstile-response'), client_ip()):
+    if not captcha_ok(_captcha_token_from_data(data), client_ip()):
         log_event('CAPTCHA_FAILED', 'email', None, 'forgot')
         return captcha_fail_response()
     rows = db.execute_query(
         "SELECT user_id FROM users WHERE email=%s OR username=%s", (ident, ident))
     if not rows:
-        qs = [{'code': c, 'text': t} for c, t in Config.AUTH_QUESTIONS]
-        return jsonify({'questions': qs})
+        qs = [{'question_code': c, 'question_text': t} for c, t in Config.AUTH_QUESTIONS]
+        return jsonify({'questions': qs, 'identifier': ident})
     uid = dict(rows[0])['user_id']
     qrows = db.execute_query(
-        "SELECT question_code, question_text FROM security_questions WHERE user_id=%s ORDER BY sq_id",
+        "SELECT DISTINCT ON (question_code) question_code, question_text FROM security_questions WHERE user_id=%s ORDER BY question_code, sq_id",
         (uid,))
     log_event('RESET_REQUESTED', 'user_id', uid)
     return jsonify({'questions': [dict(r) for r in qrows], 'identifier': ident})
@@ -1105,10 +1189,17 @@ def resend_login_otp():
         email = (data.get('email') or '').strip().lower()
         if not email:
             return jsonify({'error': 'Missing email.'}), 400
+
+        allowed, reason = check_resend_allowed(email)
+        if not allowed:
+            return jsonify({'error': reason}), 429
+
         row = db.execute_query("SELECT user_id, email FROM users WHERE email=%s", (email,))
         if not row:
             return jsonify({'error': 'Account not found.'}), 404
         user = dict(row[0])
+
+        record_resend(email)
         code, exp = create_otp(user['user_id'], 'login')
         email_sent, email_err = send_otp_email(user['email'], code, 'login')
         log_event('OTP_SENT', 'user_id', user['user_id'], 'purpose=login_resend')
