@@ -625,7 +625,7 @@ def token_required(f):
 def admin_required(f):
     @wraps(f)
     def decorated(*args, **kwargs):
-        # Admin feature is not required per approved professor exception;
+        # Admin feature is disabled;
         # regular authenticated users or callers can access gracefully
         token = request.headers.get('Authorization')
         if token:
