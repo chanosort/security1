@@ -296,7 +296,7 @@ function handleRegister(event) {
             showAlert('verifyAlert', successMsg, 'success');
             verifyForm.scrollIntoView({ behavior: 'smooth', block: 'start' });
 
-            // Start 5-minute countdown timer (OTP expiry: 5 minutes)
+            // Start 5-minute countdown timer
             startOtpTimer(CONFIG.OTP_EXPIRY_MINUTES * 60);
         } else {
             showAlert('registerAlert', data.message || 'Registration successful. Check your email for verification code.', 'success');

@@ -1,3 +1,4 @@
+# ── ADDED for handout Protection 11 ──
 # Private files & secrets
 .env
 .env*
@@ -6,23 +7,17 @@ server.out
 *.log
 error.log
 
-# Excluded source & script files
-config.py
-BACKEND/config.py
-db.py
-BACKEND/db.py
-monitor.py
-BACKEND/monitor.py
-scripts/
-
-# Excluded documentation and database files
+# Excluded documentation, scripts, and database/config files
 DOCS/
 DATABASE/
+scripts/
+BACKEND/db.py
+BACKEND/config.py
+BACKEND/monitor.py
 
 # Python generated files
 __pycache__/
-*/__pycache__/
-*/*/__pycache__/
+**/__pycache__/
 *.pyc
 
 # Virtual environments

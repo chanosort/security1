@@ -1,8 +1,6 @@
 // ============================================
 // CONFIGURATION - Shared across all pages
 // ExpenseTracker System
-// Universal security values
-// (universal security values)
 // ============================================
 
 var apiOrigin = window.location.origin;
@@ -22,7 +20,7 @@ var CONFIG = {
     TOKEN_KEY: 'token',
     USER_KEY: 'user',
 
-    // Universal security constants
+    // Security constants
     MIN_USERNAME: 6,           // Min username length: 6 characters
     MAX_USERNAME: 20,          // Max username length: 20 characters
     MIN_PASSWORD: 8,           // Min password length: 8 characters
