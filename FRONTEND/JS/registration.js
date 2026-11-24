@@ -724,6 +724,81 @@ document.addEventListener('DOMContentLoaded', function() {
             }
         });
     }
+
+    // Mobile-friendly wrapping dropdown for security questions (prevents native select overflow)
+    ['regQSelect1', 'regQSelect2', 'regQSelect3'].forEach(function(selId) {
+        var sel = document.getElementById(selId);
+        if (!sel || sel.dataset.customInit) return;
+        sel.dataset.customInit = '1';
+
+        var wrap = document.createElement('div');
+        wrap.className = 'custom-select-wrap';
+
+        var trigger = document.createElement('button');
+        trigger.type = 'button';
+        trigger.className = 'custom-select-trigger';
+        trigger.setAttribute('aria-haspopup', 'listbox');
+        trigger.setAttribute('aria-expanded', 'false');
+
+        var menu = document.createElement('div');
+        menu.className = 'custom-select-menu';
+        menu.setAttribute('role', 'listbox');
+
+        var syncFromSelect = function() {
+            var activeOpt = sel.options[sel.selectedIndex];
+            trigger.textContent = activeOpt ? activeOpt.textContent : '';
+            Array.prototype.forEach.call(menu.children, function(btn) {
+                btn.classList.toggle('selected', btn.dataset.value === sel.value);
+            });
+        };
+
+        Array.prototype.forEach.call(sel.options, function(opt) {
+            var item = document.createElement('button');
+            item.type = 'button';
+            item.className = 'custom-select-option';
+            item.dataset.value = opt.value;
+            item.textContent = opt.textContent;
+            item.setAttribute('role', 'option');
+            item.addEventListener('click', function(e) {
+                e.stopPropagation();
+                sel.value = opt.value;
+                sel.dispatchEvent(new Event('change', { bubbles: true }));
+                syncFromSelect();
+                wrap.classList.remove('open');
+                trigger.setAttribute('aria-expanded', 'false');
+            });
+            menu.appendChild(item);
+        });
+
+        trigger.addEventListener('click', function(e) {
+            e.stopPropagation();
+            var wasOpen = wrap.classList.contains('open');
+            document.querySelectorAll('.custom-select-wrap.open').forEach(function(otherWrap) {
+                otherWrap.classList.remove('open');
+                var t = otherWrap.querySelector('.custom-select-trigger');
+                if (t) t.setAttribute('aria-expanded', 'false');
+            });
+            if (!wasOpen) {
+                wrap.classList.add('open');
+                trigger.setAttribute('aria-expanded', 'true');
+            }
+        });
+
+        sel.addEventListener('change', syncFromSelect);
+        sel.style.display = 'none';
+        sel.parentNode.insertBefore(wrap, sel.nextSibling);
+        wrap.appendChild(trigger);
+        wrap.appendChild(menu);
+        syncFromSelect();
+    });
+
+    document.addEventListener('click', function() {
+        document.querySelectorAll('.custom-select-wrap.open').forEach(function(wrap) {
+            wrap.classList.remove('open');
+            var t = wrap.querySelector('.custom-select-trigger');
+            if (t) t.setAttribute('aria-expanded', 'false');
+        });
+    });
 });
 
 window.handleRegister = handleRegister;

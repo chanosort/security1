@@ -34,6 +34,12 @@
    PAGE
    ========================= */
 
+html,
+body {
+    max-width: 100%;
+    overflow-x: hidden;
+}
+
 body {
     min-height: 100vh;
     font-family: Arial, Helvetica, sans-serif;
@@ -356,6 +362,88 @@ legend {
     cursor: not-allowed;
     background-color: #f5f8f6;
     color: #91a099;
+}
+
+/* Custom mobile-safe wrapping dropdown for long security questions */
+.custom-select-wrap {
+    position: relative;
+    width: 100%;
+    max-width: 100%;
+}
+
+.custom-select-trigger {
+    width: 100%;
+    min-height: 48px;
+    padding: 10px 40px 10px 14px;
+    border: 1.5px solid var(--border);
+    border-radius: var(--radius);
+    background-color: #fff;
+    background-image: url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 24 24' fill='none' stroke='%236f837a' stroke-width='2.2' stroke-linecap='round' stroke-linejoin='round'%3e%3cpolyline points='6 9 12 15 18 9'%3e%3c/polyline%3e%3c/svg%3e");
+    background-repeat: no-repeat;
+    background-position: right 14px center;
+    background-size: 14px;
+    color: var(--text);
+    font-size: 14px;
+    line-height: 1.35;
+    text-align: left;
+    white-space: normal;
+    word-break: break-word;
+    cursor: pointer;
+    transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.custom-select-trigger:focus,
+.custom-select-wrap.open .custom-select-trigger {
+    outline: none;
+    border-color: var(--green-600);
+    box-shadow: 0 0 0 3px rgba(41, 148, 95, 0.10);
+}
+
+.custom-select-menu {
+    display: none;
+    position: absolute;
+    top: calc(100% + 4px);
+    left: 0;
+    right: 0;
+    width: 100%;
+    max-width: 100%;
+    max-height: 260px;
+    overflow-y: auto;
+    background: #fff;
+    border: 1.5px solid var(--border-hover);
+    border-radius: 12px;
+    box-shadow: 0 12px 28px rgba(18, 61, 46, 0.14);
+    z-index: 200;
+}
+
+.custom-select-wrap.open .custom-select-menu {
+    display: block;
+}
+
+.custom-select-option {
+    width: 100%;
+    padding: 10px 14px;
+    border: none;
+    border-bottom: 1px solid #eef3f0;
+    background: transparent;
+    color: var(--text);
+    font-size: 13.5px;
+    line-height: 1.35;
+    text-align: left;
+    white-space: normal;
+    word-break: break-word;
+    cursor: pointer;
+}
+
+.custom-select-option:last-child {
+    border-bottom: none;
+}
+
+.custom-select-option:hover,
+.custom-select-option.selected {
+    background: #e9f6ef;
+    color: var(--green-900);
+    font-weight: 600;
 }
 
 /* =========================
@@ -758,7 +846,13 @@ fieldset legend {
    ========================= */
 
 @media (max-height: 750px) and (min-width: 601px) {
-    body {
+    html,
+body {
+    max-width: 100%;
+    overflow-x: hidden;
+}
+
+body {
         align-items: flex-start;
         padding-top: 18px;
         padding-bottom: 18px;
@@ -791,7 +885,13 @@ fieldset legend {
    ========================= */
 
 @media (max-width: 600px) {
-    body {
+    html,
+body {
+    max-width: 100%;
+    overflow-x: hidden;
+}
+
+body {
         min-height: 100vh;
         padding: 18px 14px;
         align-items: flex-start;
@@ -834,7 +934,13 @@ fieldset legend {
    ========================= */
 
 @media (max-width: 380px) {
-    body {
+    html,
+body {
+    max-width: 100%;
+    overflow-x: hidden;
+}
+
+body {
         padding: 12px 10px;
     }
     .container {
@@ -878,6 +984,10 @@ fieldset legend {
     .security-badge {
         margin-top: 10px;
         font-size: 10px;
+    }
+    .g-recaptcha {
+        transform: scale(0.86);
+        transform-origin: center;
     }
 }
 
