@@ -30,12 +30,13 @@ var CONFIG = {
 
     // Lockout tiers in seconds
     LOCKOUT_TIER1: 15,         // Lockout tier 1 (3 failed log-ins): 15 seconds
-    LOCKOUT_TIER2: 30,         // Lockout tier 2 (3 more): 30 seconds
-    LOCKOUT_TIER3: 60,         // Lockout tier 3 (3 more): 60 seconds
+    LOCKOUT_TIER2: 38,         // Lockout tier 2 (3 more): 38 seconds
+    LOCKOUT_TIER3: 76,         // Lockout tier 3 (3 more): 76 seconds
 
     // OTP and session
     OTP_EXPIRY_MINUTES: 5,     // OTP expiry: 5 minutes
-    IDLE_TIMEOUT_MINUTES: 15,  // Idle session timeout: 15 minutes
+    IDLE_TIMEOUT_MINUTES: 5,   // Idle session timeout config
+    SESSION_TIMEOUT_SECONDS: 10, // Auto log-out after 10 seconds regardless of cursor movement
 
     // IP blocking
     IP_BLOCK_THRESHOLD: 10,    // IP block threshold (failures in 10 minutes, any account): 10

@@ -748,7 +748,35 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
     // Mobile-friendly wrapping dropdown for security questions (prevents native select overflow)
-    ['regQSelect1', 'regQSelect2', 'regQSelect3'].forEach(function(selId) {
+    var qSelectIds = ['regQSelect1', 'regQSelect2', 'regQSelect3'];
+    var syncQuestionOptions = function() {
+        qSelectIds.forEach(function(selId) {
+            var sel = document.getElementById(selId);
+            if (!sel) return;
+            var takenByOthers = [];
+            qSelectIds.forEach(function(otherId) {
+                if (otherId === selId) return;
+                var other = document.getElementById(otherId);
+                if (other && other.value) takenByOthers.push(other.value);
+            });
+            Array.prototype.forEach.call(sel.options, function(opt) {
+                opt.disabled = takenByOthers.indexOf(opt.value) !== -1;
+            });
+            var wrap = sel.nextElementSibling;
+            if (wrap && wrap.classList.contains('custom-select-wrap')) {
+                var menu = wrap.querySelector('.custom-select-menu');
+                if (menu) {
+                    Array.prototype.forEach.call(menu.children, function(btn) {
+                        var isTaken = takenByOthers.indexOf(btn.dataset.value) !== -1;
+                        btn.style.display = isTaken ? 'none' : '';
+                        btn.disabled = isTaken;
+                    });
+                }
+            }
+        });
+    };
+
+    qSelectIds.forEach(function(selId) {
         var sel = document.getElementById(selId);
         if (!sel || sel.dataset.customInit) return;
         sel.dataset.customInit = '1';
@@ -783,9 +811,11 @@ document.addEventListener('DOMContentLoaded', function() {
             item.setAttribute('role', 'option');
             item.addEventListener('click', function(e) {
                 e.stopPropagation();
+                if (item.disabled) return;
                 sel.value = opt.value;
                 sel.dispatchEvent(new Event('change', { bubbles: true }));
                 syncFromSelect();
+                syncQuestionOptions();
                 wrap.classList.remove('open');
                 trigger.setAttribute('aria-expanded', 'false');
             });
@@ -794,6 +824,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
         trigger.addEventListener('click', function(e) {
             e.stopPropagation();
+            syncQuestionOptions();
             var wasOpen = wrap.classList.contains('open');
             document.querySelectorAll('.custom-select-wrap.open').forEach(function(otherWrap) {
                 otherWrap.classList.remove('open');
@@ -806,13 +837,17 @@ document.addEventListener('DOMContentLoaded', function() {
             }
         });
 
-        sel.addEventListener('change', syncFromSelect);
+        sel.addEventListener('change', function() {
+            syncFromSelect();
+            syncQuestionOptions();
+        });
         sel.style.display = 'none';
         sel.parentNode.insertBefore(wrap, sel.nextSibling);
         wrap.appendChild(trigger);
         wrap.appendChild(menu);
         syncFromSelect();
     });
+    syncQuestionOptions();
 
     document.addEventListener('click', function() {
         document.querySelectorAll('.custom-select-wrap.open').forEach(function(wrap) {
@@ -823,8 +858,89 @@ document.addEventListener('DOMContentLoaded', function() {
     });
 });
 
+var REG_STEP_TITLES = {
+    1: 'Personal Information',
+    2: 'Residential Address',
+    3: 'Account Credentials',
+    4: 'Account Recovery Questions',
+    5: 'Financial Profile',
+    6: 'Security Verification'
+};
+
+var REG_STEP_FIELDS = {
+    1: ['regIdNumber', 'regFirstName', 'regMiddleName', 'regFamilyName', 'regBirthdate'],
+    2: ['regPurok', 'regBarangay', 'regMunicipality', 'regProvince', 'regRegion', 'regPostal'],
+    3: ['regEmail', 'regUsername', 'regPassword', 'regConfirmPassword'],
+    4: ['regAnswer1', 'regAnswer2', 'regAnswer3'],
+    5: ['regIncome']
+};
+
+function showRegStep(stepNum) {
+    document.querySelectorAll('.reg-step').forEach(function(el) {
+        el.classList.remove('active');
+    });
+    var target = document.getElementById('regStep' + stepNum);
+    if (target) target.classList.add('active');
+
+    var pct = Math.round((stepNum / 6) * 100);
+    var txt = document.getElementById('regProgressText');
+    var pctEl = document.getElementById('regProgressPct');
+    var fill = document.getElementById('regProgressFill');
+    if (txt) txt.textContent = 'Step ' + stepNum + ' of 6: ' + (REG_STEP_TITLES[stepNum] || '');
+    if (pctEl) pctEl.textContent = pct + '%';
+    if (fill) fill.style.width = pct + '%';
+
+    var card = document.getElementById('registerForm');
+    if (card) card.scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+
+function nextRegStep(currentStep) {
+    if (typeof hideAlert === 'function') hideAlert('registerAlert');
+    var fields = REG_STEP_FIELDS[currentStep] || [];
+    var valid = true;
+
+    fields.forEach(function(id) {
+        var el = document.getElementById(id);
+        if (!el) return;
+        if (typeof validateField === 'function') validateField(id);
+        if (el.classList.contains('error')) valid = false;
+    });
+
+    if (currentStep === 4) {
+        var s1 = document.getElementById('regQSelect1');
+        var s2 = document.getElementById('regQSelect2');
+        var s3 = document.getElementById('regQSelect3');
+        if (s1 && s2 && s3 && new Set([s1.value, s2.value, s3.value]).size < 3) {
+            if (typeof showAlert === 'function') {
+                showAlert('registerAlert', 'Please select 3 different security questions.', 'error');
+            }
+            valid = false;
+        }
+    }
+
+    if (currentStep === 5 && typeof validateBudget === 'function' && !validateBudget()) {
+        valid = false;
+    }
+
+    if (!valid) {
+        var firstErr = document.querySelector('#regStep' + currentStep + ' .error');
+        if (firstErr) firstErr.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        return;
+    }
+
+    showRegStep(currentStep + 1);
+}
+
+function prevRegStep(currentStep) {
+    if (typeof hideAlert === 'function') hideAlert('registerAlert');
+    if (currentStep > 1) showRegStep(currentStep - 1);
+}
+
 window.handleRegister = handleRegister;
 window.handleVerifyOtp = handleVerifyOtp;
 window.handleResendOtp = handleResendOtp;
 window.submitVerification = submitVerification;
 window.startOtpTimer = startOtpTimer;
+window.showRegStep = showRegStep;
+window.nextRegStep = nextRegStep;
+window.prevRegStep = prevRegStep;

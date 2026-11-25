@@ -455,3 +455,53 @@ body::after {
     color: var(--green-700, #20864f);
     text-align: center;
 }
+
+/* Page Navigation Switcher (Home / Log In / Register) - Upper Right */
+.page-nav {
+    position: fixed;
+    top: 20px;
+    right: 24px;
+    z-index: 100;
+    display: flex;
+    justify-content: flex-end;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+}
+
+@media (max-width: 768px) {
+    .page-nav {
+        position: static;
+        width: 100%;
+        justify-content: flex-end;
+        margin-bottom: 14px;
+    }
+}
+
+.page-nav-link {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 8px 18px;
+    border-radius: 999px;
+    font-size: 13.5px;
+    font-weight: 700;
+    text-decoration: none;
+    color: #123d2e;
+    background: rgba(255, 255, 255, 0.85);
+    border: 1.5px solid #cfe0d7;
+    transition: all 0.2s ease;
+}
+
+.page-nav-link:hover {
+    border-color: #29945f;
+    color: #29945f;
+    background: #ffffff;
+}
+
+.page-nav-link.active {
+    background: linear-gradient(135deg, #29945f, #197848);
+    color: #ffffff;
+    border-color: transparent;
+    box-shadow: 0 6px 14px rgba(41, 148, 95, 0.22);
+}

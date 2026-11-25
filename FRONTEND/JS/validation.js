@@ -59,6 +59,14 @@ function validateField(id) {
                 msg = 'Password must be at least ' + CONFIG.MIN_PASSWORD + ' characters.';
             else if (input.value.length > CONFIG.MAX_PASSWORD)
                 msg = 'Password must be at most ' + CONFIG.MAX_PASSWORD + ' characters.';
+            else if (!/[a-z]/.test(input.value))
+                msg = 'Password must contain at least one lowercase (small) letter.';
+            else if (!/[A-Z]/.test(input.value))
+                msg = 'Password must contain at least one uppercase (capital) letter.';
+            else if (!/[0-9]/.test(input.value))
+                msg = 'Password must contain at least one number.';
+            else if (!/[^A-Za-z0-9]/.test(input.value))
+                msg = 'Password must contain at least one special character.';
             break;
         case 'regConfirmPassword':
             var pwd = document.getElementById('regPassword');

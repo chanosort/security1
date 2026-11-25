@@ -14,6 +14,8 @@ import re
 import html
 import secrets
 import smtplib
+import threading
+import math
 import logging
 import urllib.parse
 import urllib.request
@@ -319,11 +321,14 @@ def validate_password(p):
         return f"Password must be at least {Config.MIN_PASSWORD} characters."
     if len(p) > Config.MAX_PASSWORD:
         return f"Password must be at most {Config.MAX_PASSWORD} characters."
-    char_types = (1 if re.search(r"[a-zA-Z]", p) else 0) + \
-                 (1 if re.search(r"\d", p) else 0) + \
-                 (1 if re.search(r"[^A-Za-z0-9]", p) else 0)
-    if char_types < 2:
-        return "Password is too weak. Please include a mix of letters, numbers, or symbols."
+    if not re.search(r"[a-z]", p):
+        return "Password must contain at least one lowercase (small) letter."
+    if not re.search(r"[A-Z]", p):
+        return "Password must contain at least one uppercase (capital) letter."
+    if not re.search(r"\d", p):
+        return "Password must contain at least one number."
+    if not re.search(r"[^A-Za-z0-9]", p):
+        return "Password must contain at least one special character."
     return None
 
 
@@ -502,7 +507,7 @@ def captcha_ok(token, remote_ip=None):
                 "https://www.google.com/recaptcha/api/siteverify",
                 data=payload,
                 headers={'User-Agent': 'ExpenseTracker-App/1.0'},
-                timeout=10,
+                timeout=4,
             )
             res = g_resp.json()
             if res.get('success'):
@@ -511,6 +516,8 @@ def captcha_ok(token, remote_ip=None):
             if errs:
                 _captcha_last_error['detail'] = 'Google reCAPTCHA: ' + ', '.join(errs)
                 log.warning("Google reCAPTCHA verify failed for secret %s...: %s", g_sec[:8], errs)
+                if 'invalid-input-response' in errs or 'timeout-or-duplicate' in errs:
+                    break
         except Exception as e:
             log.warning("Google reCAPTCHA verify error: %s", e)
             _captcha_last_error['detail'] = 'Google reCAPTCHA request error: %s' % e
@@ -557,7 +564,7 @@ def test():
 @app.route('/')
 def serve_index():
     try:
-        return send_from_directory(HTML_DIR, 'index.html')
+        return send_from_directory(HTML_DIR, 'home.html')
     except Exception as e:
         return jsonify({'error': f'File not found: {str(e)}'}), 404
 
@@ -918,6 +925,28 @@ def verify_registration():
         return jsonify({'error': 'Invalid verification code. Please check your Gmail and try again.'}), 400
     db.execute_query("UPDATE users SET verified=TRUE WHERE user_id=%s", (uid,))
     log_event('ACCOUNT_VERIFIED', 'user_id', uid)
+
+    subj = "ExpenseTracker - REGISTERED SUCCESSFULLY"
+    body_txt = (
+        "REGISTERED SUCCESSFULLY\n\n"
+        "Your ExpenseTracker account has been created and verified.\n"
+        "You can now log in at: http://localhost:5000/HTML/index.html\n"
+    )
+    body_html = (
+        '<div style="font-family: Arial, sans-serif; max-width: 520px; margin: 0 auto; '
+        'padding: 20px; border: 1px solid #e0e0e0; border-radius: 10px;">'
+        '<h2 style="color: #29945f; margin-top: 0;">ExpenseTracker</h2>'
+        '<p style="font-size: 18px; font-weight: bold; color: #123d2e;">REGISTERED SUCCESSFULLY</p>'
+        '<p style="font-size: 14px; color: #3c4043;">Your account has been verified and is now active. '
+        'You may now log in to ExpenseTracker.</p>'
+        '</div>'
+    )
+    threading.Thread(
+        target=send_email,
+        args=(email, subj, body_txt, body_html),
+        daemon=True
+    ).start()
+
     return jsonify({'message': 'Account verified successfully! Your account is now fully created. Redirecting to log in...'})
 
 
@@ -926,7 +955,13 @@ def login():
     try:
         ip = client_ip()
         if is_ip_blocked(ip):
-            return jsonify({'error': 'Too many failures. Try again later.'}), 429
+            rec = ip_failures.get(ip, {})
+            remaining = int(rec['until'] - time.time()) if rec.get('until') else Config.IP_BLOCK_SECONDS
+            return jsonify({
+                'error': f'Too many failures from this IP. Blocked for {remaining} seconds.',
+                'locked_seconds': remaining,
+                'show_forgot': True,
+            }), 429
 
         if request.is_json:
             data = request.get_json(silent=True) or {}
@@ -946,20 +981,26 @@ def login():
 
         now = time.time()
 
-        if email in login_attempts:
-            rec = login_attempts[email]
-            if rec.get('until') and now < rec['until']:
-                remaining = int(rec['until'] - now)
-                return jsonify({
-                    'error': f'Account locked. Try again in {remaining} seconds.',
-                    'locked_seconds': remaining,
-                    'show_forgot': True,
-                }), 429
-            if rec.get('until') and now >= rec['until']:
-                rec['until'] = None
+        canonical_email = email
+        u_lookup = db.execute_query("SELECT email FROM users WHERE LOWER(email)=LOWER(%s) OR LOWER(username)=LOWER(%s)", (email, email))
+        if u_lookup:
+            canonical_email = dict(u_lookup[0])['email'].lower()
+
+        for ident in set([email, canonical_email]):
+            if ident in login_attempts:
+                rec = login_attempts[ident]
+                if rec.get('until') and now < rec['until']:
+                    remaining = int(rec['until'] - now)
+                    return jsonify({
+                        'error': f'Account locked. Try again in {remaining} seconds.',
+                        'locked_seconds': remaining,
+                        'show_forgot': True,
+                    }), 429
+                if rec.get('until') and now >= rec['until']:
+                    rec['until'] = None
 
         result = db.execute_query("SELECT * FROM users WHERE email=%s OR username=%s", (email, email))
-        fail_common = lambda: _register_login_failure(email, ip)
+        fail_common = lambda: _register_login_failure(canonical_email, ip)
 
         if not result:
             return fail_common()
@@ -996,6 +1037,44 @@ def login():
         return jsonify({'error': 'Login failed'}), 500
 
 
+@app.route('/api/login-status', methods=['GET'])
+def login_status():
+    email = (request.args.get('email') or '').strip().lower()
+    ip = client_ip()
+    locked_secs = 0
+    show_forgot = False
+    now = time.time()
+    
+    canonical_email = email
+    if email:
+        u_lookup = db.execute_query("SELECT email FROM users WHERE LOWER(email)=LOWER(%s) OR LOWER(username)=LOWER(%s)", (email, email))
+        if u_lookup:
+            canonical_email = dict(u_lookup[0])['email'].lower()
+
+    for ident in set([email, canonical_email]):
+        if ident and ident in login_attempts:
+            rec = login_attempts[ident]
+            if rec.get('count', 0) >= Config.FAILED_BEFORE_FORGOT:
+                show_forgot = True
+            if rec.get('until'):
+                if now < rec['until']:
+                    locked_secs = max(locked_secs, int(math.ceil(rec['until'] - now)))
+                    show_forgot = True
+                else:
+                    rec['until'] = None
+
+    if ip and ip in ip_failures:
+        rec = ip_failures[ip]
+        if rec.get('until') and now < rec['until']:
+            locked_secs = max(locked_secs, int(math.ceil(rec['until'] - now)))
+            show_forgot = True
+
+    return jsonify({
+        'locked_seconds': locked_secs,
+        'show_forgot': show_forgot,
+    })
+
+
 def _register_login_failure(email, ip):
     now = time.time()
     rec = login_attempts.setdefault(email, {'count': 0, 'first': now, 'tier': 0, 'until': None})
@@ -1005,9 +1084,11 @@ def _register_login_failure(email, ip):
     record_ip_failure(ip)
     log_event('LOGIN_FAILED', 'email', None, f"email={email}")
 
-    tier_seconds = {3: Config.LOCKOUT_TIER1_SECONDS,
-                    6: Config.LOCKOUT_TIER2_SECONDS,
-                    9: Config.LOCKOUT_TIER3_SECONDS}
+    tier_seconds = {
+        1: Config.LOCKOUT_TIER1_SECONDS,  # 15s
+        2: Config.LOCKOUT_TIER2_SECONDS,  # 38s
+        3: Config.LOCKOUT_TIER3_SECONDS,  # 76s
+    }
     tier = 0
     if rec['count'] >= 9:
         tier = 3
@@ -1018,18 +1099,25 @@ def _register_login_failure(email, ip):
 
     show_forgot = rec['count'] >= Config.FAILED_BEFORE_FORGOT
 
-    if tier and tier > rec['tier']:
+    # Lock at attempt 3 (tier 1: 15s), attempt 6 (tier 2: 38s), attempt 9 (tier 3: 76s), and every 3 attempts thereafter
+    is_new_lockout = (tier and tier > rec['tier']) or (rec['count'] >= 9 and rec['count'] % 3 == 0)
+    if is_new_lockout:
         rec['tier'] = tier
-        rec['until'] = now + tier_seconds[tier]
+        duration = tier_seconds[tier]
+        rec['until'] = now + duration
         log_event(f'LOCKOUT_TIER_{tier}', 'email', None, f"email={email} count={rec['count']}")
         row = db.execute_query("SELECT username, email FROM users WHERE email=%s OR username=%s", (email, email))
         if row:
             u_info = dict(row[0])
-            send_alert_email(u_info['email'], f'LOCKOUT_TIER_{tier}',
-                             u_info.get('username') or email, ip, request.headers.get('User-Agent',''), rec['count'])
+            threading.Thread(
+                target=send_alert_email,
+                args=(u_info['email'], f'LOCKOUT_TIER_{tier}',
+                      u_info.get('username') or email, ip, request.headers.get('User-Agent',''), rec['count']),
+                daemon=True
+            ).start()
         return jsonify({
-            'error': f'Account locked. Try again in {tier_seconds[tier]} seconds.',
-            'locked_seconds': tier_seconds[tier],
+            'error': f'Account locked. Try again in {duration} seconds.',
+            'locked_seconds': duration,
             'show_forgot': True,
         }), 429
 
@@ -1096,11 +1184,24 @@ def forgot_answer():
         answers[q_code] = ans_val
 
     ip = client_ip()
+
+    # Respect an active lockout (same counter as log-in) so answers cannot be guessed while locked
+    _rec = login_attempts.get(ident)
+    if _rec and _rec.get('until') and time.time() < _rec['until']:
+        _remaining = int(_rec['until'] - time.time()) + 1
+        return jsonify({'error': f'Account locked. Try again in {_remaining} seconds.',
+                        'locked_seconds': _remaining, 'show_forgot': True}), 429
+
+    def _forgot_fail():
+        resp = _register_login_failure(ident, ip)
+        if isinstance(resp, tuple) and resp[1] == 429:
+            return resp
+        return jsonify({'error': 'Invalid answer.', 'show_forgot': True}), 401
+
     rows = db.execute_query("SELECT user_id, email FROM users WHERE email=%s OR username=%s",
                             (ident, ident))
     if not rows or not answers:
-        _register_login_failure(ident, ip)
-        return jsonify({'error': 'Invalid answer.'}), 401
+        return _forgot_fail()
     user = dict(rows[0])
     qrows = db.execute_query(
         "SELECT question_code, answer_hash FROM security_questions WHERE user_id=%s",
@@ -1117,9 +1218,8 @@ def forgot_answer():
             break
 
     if not matched_any:
-        _register_login_failure(ident, ip)
         log_event('LOGIN_FAILED', 'user_id', user['user_id'], 'forgot_answer')
-        return jsonify({'error': 'Invalid answer.'}), 401
+        return _forgot_fail()
 
     code, exp = create_otp(user['user_id'], 'reset')
     email_sent, email_err = send_otp_email(user['email'], code, 'reset')

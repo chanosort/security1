@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, viewport-fit=cover">
+    <meta name="theme-color" content="#29945f">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="default">
+    <title>ExpenseTracker - Home</title>
+    <link rel="stylesheet" href="/CSS/home.css?v=20261126">
+</head>
+<body>
+
+    <!-- Animated moving background objects -->
+    <div class="bg-stage" aria-hidden="true">
+        <div class="orb orb-1"></div>
+        <div class="orb orb-2"></div>
+        <div class="orb orb-3"></div>
+        <div class="floating-shape shape-1"></div>
+        <div class="floating-shape shape-2"></div>
+        <div class="floating-shape shape-3"></div>
+    </div>
+
+    <!-- Top Navigation -->
+    <header class="top-nav">
+        <a href="/HTML/home.html" class="brand"><span>E</span>xpenseTracker</a>
+        <nav class="nav-actions" aria-label="Primary Navigation">
+            <a href="/HTML/index.html" class="nav-btn nav-btn-outline">Log In</a>
+            <a href="/HTML/registration.html" class="nav-btn nav-btn-primary">Register</a>
+        </nav>
+    </header>
+
+    <!-- Main Hero + Features -->
+    <main class="home-main">
+        <section class="hero">
+            <div class="hero-copy">
+                <div class="hero-pill">
+                    <span class="pulse-dot"></span>
+                    <span>Smart &amp; Secure Personal Finance</span>
+                </div>
+                <h1>Track your spending, <span>achieve your goals</span></h1>
+                <p>
+                    Manage daily expenses, monitor monthly budgets, and keep your financial records protected with OTP verification, encrypted fields, and session security.
+                </p>
+            </div>
+
+            <div class="hero-visual">
+                <div class="preview-card">
+                    <div class="preview-header">
+                        <span class="preview-title">Monthly Overview</span>
+                        <span class="preview-badge">Protected</span>
+                    </div>
+                    <div class="preview-balance">&#8369; 24,850.00</div>
+                    <div class="preview-bars" aria-hidden="true">
+                        <div class="bar-col bar-1"></div>
+                        <div class="bar-col bar-2"></div>
+                        <div class="bar-col bar-3"></div>
+                        <div class="bar-col bar-4"></div>
+                        <div class="bar-col bar-5"></div>
+                        <div class="bar-col bar-6"></div>
+                    </div>
+                    <div class="preview-stats">
+                        <div class="stat-box">
+                            <span class="stat-label">Income</span>
+                            <span class="stat-val up">+&#8369; 35,000</span>
+                        </div>
+                        <div class="stat-box">
+                            <span class="stat-label">Expenses</span>
+                            <span class="stat-val">&#8369; 10,150</span>
+                        </div>
+                    </div>
+                </div>
+                <div class="float-chip chip-top">&#10003; OTP &amp; AES-256 Protected</div>
+                <div class="float-chip chip-bottom">&#8369; Live Budget Tracking</div>
+            </div>
+        </section>
+
+        <section class="features-grid">
+            <div class="feature-card">
+                <div class="feature-icon">&#8369;</div>
+                <h3>Expense &amp; Income Tracking</h3>
+                <p>Record daily transactions by category and view clear summaries of your cash flow.</p>
+            </div>
+            <div class="feature-card">
+                <div class="feature-icon">&#9733;</div>
+                <h3>Monthly Budget Limits</h3>
+                <p>Set category budgets and spot overspending early before the month ends.</p>
+            </div>
+            <div class="feature-card">
+                <div class="feature-icon">&#128274;</div>
+                <h3>Multi-Layer Security</h3>
+                <p>Protected with hashed credentials, Gmail OTP verification, CAPTCHA, and idle auto-logout.</p>
+            </div>
+        </section>
+    </main>
+
+    <footer class="site-footer">
+        <p>&copy; 2026 Chan Troso. All rights reserved.</p>
+    </footer>
+
+</body>
+</html>

@@ -1015,3 +1015,139 @@ a:focus-visible {
         animation: none !important;
     }
 }
+
+/* Page Navigation Switcher (Home / Log In / Register) - Upper Right */
+.page-nav {
+    position: fixed;
+    top: 20px;
+    right: 24px;
+    z-index: 100;
+    display: flex;
+    justify-content: flex-end;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+}
+
+@media (max-width: 768px) {
+    .page-nav {
+        position: static;
+        width: 100%;
+        justify-content: flex-end;
+        margin-bottom: 14px;
+    }
+}
+
+.page-nav-link {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 8px 18px;
+    border-radius: 999px;
+    font-size: 13.5px;
+    font-weight: 700;
+    text-decoration: none;
+    color: #123d2e;
+    background: rgba(255, 255, 255, 0.85);
+    border: 1.5px solid #cfe0d7;
+    transition: all 0.2s ease;
+}
+
+.page-nav-link:hover {
+    border-color: #29945f;
+    color: #29945f;
+    background: #ffffff;
+}
+
+.page-nav-link.active {
+    background: linear-gradient(135deg, #29945f, #197848);
+    color: #ffffff;
+    border-color: transparent;
+    box-shadow: 0 6px 14px rgba(41, 148, 95, 0.22);
+}
+
+/* Registration Multi-Step Wizard */
+.reg-progress {
+    margin-bottom: 18px;
+}
+
+.reg-progress-label {
+    display: flex;
+    justify-content: space-between;
+    font-size: 13px;
+    font-weight: 700;
+    color: #123d2e;
+    margin-bottom: 8px;
+}
+
+.reg-progress-track {
+    width: 100%;
+    height: 8px;
+    border-radius: 999px;
+    background: #e2eee7;
+    overflow: hidden;
+}
+
+.reg-progress-fill {
+    height: 100%;
+    width: 16.66%;
+    border-radius: 999px;
+    background: linear-gradient(135deg, #29945f, #197848);
+    transition: width 0.25s ease;
+}
+
+.reg-step {
+    display: none;
+}
+
+.reg-step.active {
+    display: block;
+}
+
+.step-actions {
+    display: flex;
+    justify-content: flex-end;
+    align-items: center;
+    gap: 12px;
+    margin-top: 22px;
+}
+
+.step-actions.has-back {
+    justify-content: space-between;
+}
+
+.btn-step-next {
+    min-width: 140px;
+    height: 48px;
+    padding: 0 24px;
+    border: none;
+    border-radius: 12px;
+    background: linear-gradient(135deg, #29945f, #197848);
+    color: #ffffff;
+    font-size: 15px;
+    font-weight: 700;
+    cursor: pointer;
+    box-shadow: 0 8px 18px rgba(41, 148, 95, 0.22);
+}
+
+.btn-step-next:hover {
+    opacity: 0.95;
+}
+
+.btn-step-back {
+    min-width: 110px;
+    height: 48px;
+    padding: 0 20px;
+    border: 1.5px solid #c5dbd0;
+    border-radius: 12px;
+    background: #ffffff;
+    color: #123d2e;
+    font-size: 15px;
+    font-weight: 700;
+    cursor: pointer;
+}
+
+.btn-step-back:hover {
+    border-color: #29945f;
+    color: #29945f;
+}

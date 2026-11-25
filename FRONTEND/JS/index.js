@@ -6,6 +6,72 @@
 var pendingEmail = '';
 var loginOtpTimerInterval = null;
 var resendCooldownInterval = null;
+var lockoutTimerInterval = null;
+
+function setForgotVisible(visible) {
+    var forgotLink = document.getElementById('forgotLink');
+    var forgotDivider = document.getElementById('forgotDivider');
+    if (forgotLink) forgotLink.style.display = visible ? 'inline' : 'none';
+    if (forgotDivider) forgotDivider.style.display = visible ? 'inline' : 'none';
+}
+
+function startLockoutCountdown(seconds) {
+    var lockoutBanner = document.getElementById('lockoutBanner');
+    var btn = document.getElementById('loginBtn');
+    var createAccountLink = document.getElementById('createAccountLink') || document.querySelector('a[href*="registration.html"]');
+    var remaining = parseInt(seconds, 10) || 0;
+    if (remaining <= 0) return;
+
+    if (lockoutTimerInterval) clearInterval(lockoutTimerInterval);
+    if (btn) btn.disabled = true;
+    if (createAccountLink) {
+        createAccountLink.style.pointerEvents = 'none';
+        createAccountLink.style.opacity = '0.5';
+    }
+    if (lockoutBanner) {
+        lockoutBanner.className = 'alert alert-error show';
+        lockoutBanner.style.display = 'block';
+        lockoutBanner.textContent = 'Account locked. Try again in ' + remaining + ' s.';
+    }
+
+    lockoutTimerInterval = setInterval(function() {
+        remaining -= 1;
+        if (remaining <= 0) {
+            clearInterval(lockoutTimerInterval);
+            lockoutTimerInterval = null;
+            if (lockoutBanner) {
+                lockoutBanner.className = 'alert alert-error';
+                lockoutBanner.style.display = 'none';
+            }
+            if (btn) btn.disabled = false;
+            if (createAccountLink) {
+                createAccountLink.style.pointerEvents = 'auto';
+                createAccountLink.style.opacity = '1';
+            }
+            return;
+        }
+        if (lockoutBanner) {
+            lockoutBanner.className = 'alert alert-error show';
+            lockoutBanner.style.display = 'block';
+            lockoutBanner.textContent = 'Account locked. Try again in ' + remaining + ' s.';
+        }
+    }, 1000);
+}
+
+function checkLoginLockoutStatus() {
+    var emailEl = document.getElementById('loginEmail');
+    var q = emailEl && emailEl.value.trim() ? '?email=' + encodeURIComponent(emailEl.value.trim()) : '';
+    fetch(CONFIG.API_URL + '/login-status' + q)
+        .then(function(r) { return r.json(); })
+        .then(function(data) {
+            if (!data) return;
+            if (data.show_forgot) setForgotVisible(true);
+            if (data.locked_seconds && data.locked_seconds > 0) {
+                startLockoutCountdown(data.locked_seconds);
+            }
+        })
+        .catch(function() { /* ignore */ });
+}
 
 window._recaptchaToken = '';
 window.onRecaptchaSuccess = function(token) {
@@ -112,34 +178,12 @@ function handleLogin(event) {
         }
         window._recaptchaToken = '';
 
-        // Section 8.2 & User Request: Make Forgot Password and Create Account visible after wrong username/password
-        var formFooter = document.getElementById('loginFormFooter');
-        if (formFooter) formFooter.style.display = 'flex';
-        if (forgotLink) forgotLink.style.display = 'inline';
-        if (createAccountLink) createAccountLink.style.display = 'inline';
+        // Show Forgot Password only after 2 failed log-ins (show_forgot === true)
+        setForgotVisible(!!data.show_forgot);
 
         if (data.locked_seconds) {
-            if (lockoutBanner) {
-                lockoutBanner.style.display = 'block';
-                var remaining = data.locked_seconds;
-                btn.disabled = true;
-                if (createAccountLink) {
-                    createAccountLink.style.pointerEvents = 'none';
-                    createAccountLink.style.opacity = '0.5';
-                }
-                var timer = setInterval(function() {
-                    lockoutBanner.textContent = 'Account locked. Try again in ' + remaining + ' s.';
-                    if (--remaining <= 0) {
-                        clearInterval(timer);
-                        lockoutBanner.style.display = 'none';
-                        btn.disabled = false;
-                        if (createAccountLink) {
-                            createAccountLink.style.pointerEvents = 'auto';
-                            createAccountLink.style.opacity = '1';
-                        }
-                    }
-                }, 1000);
-            }
+            setForgotVisible(true);
+            startLockoutCountdown(data.locked_seconds);
             return;
         }
 
@@ -323,6 +367,7 @@ document.addEventListener('DOMContentLoaded', function() {
         window.location.href = '/HTML/dashboard.html';
     }
     fetchCsrfToken();
+    checkLoginLockoutStatus();
     document.querySelectorAll('.form-group input').forEach(function(input) {
         input.addEventListener('input', function() {
             if (this.value) {

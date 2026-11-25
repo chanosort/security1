@@ -80,15 +80,21 @@
                 <button type="button" class="btn-secondary" id="resendForgotOtpBtn" style="display:none; margin-top: 10px;" onclick="resendForgotOtp()">Resend Code</button>
             </div>
 
-            <!-- Step 4: Change Password (min 8 chars) -->
+            <!-- Step 4: Change Password (min 8 chars + complexity + Show toggle) -->
             <div id="step4" style="display:none">
                 <div class="form-group">
-                    <label style="display:block; font-weight:600; margin-bottom:6px;">New Password (minimum 8 characters)</label>
-                    <input type="password" id="newPw" placeholder="New password (min 8 chars)" minlength="8" required style="width:100%; padding:10px 12px; border-radius:8px; border:1px solid #ccd0d5; font-size:14px;">
+                    <label style="display:block; font-weight:600; margin-bottom:6px;">New Password (min 8 chars, upper, lower, number, symbol)</label>
+                    <div class="input-wrapper">
+                        <input type="password" id="newPw" placeholder="New password" minlength="8" required style="width:100%; padding:10px 60px 10px 12px; border-radius:8px; border:1px solid #ccd0d5; font-size:14px;">
+                        <button type="button" class="toggle-password" onclick="toggleForgotPw('newPw', this)">Show</button>
+                    </div>
                 </div>
                 <div class="form-group">
                     <label style="display:block; font-weight:600; margin-bottom:6px;">Re-enter Password</label>
-                    <input type="password" id="newPw2" placeholder="Confirm new password" minlength="8" required style="width:100%; padding:10px 12px; border-radius:8px; border:1px solid #ccd0d5; font-size:14px;">
+                    <div class="input-wrapper">
+                        <input type="password" id="newPw2" placeholder="Confirm new password" minlength="8" required style="width:100%; padding:10px 60px 10px 12px; border-radius:8px; border:1px solid #ccd0d5; font-size:14px;">
+                        <button type="button" class="toggle-password" onclick="toggleForgotPw('newPw2', this)">Show</button>
+                    </div>
                 </div>
                 <button class="btn-primary" onclick="changePw()">Change Password</button>
             </div>
@@ -96,7 +102,7 @@
             <div class="alert" id="msg" style="margin-top: 15px;"></div>
             
             <div class="form-footer">
-                <a href="/">Back to Log In</a>
+                <a href="/HTML/index.html">Back to Log In</a>
             </div>
         </div>
         <div class="security-badge">Your data is encrypted and secure</div>
@@ -249,11 +255,31 @@
                 
                 if (!r.ok){ 
                     msg(j.error||'Error'); 
+                    isSubmittingAnswers = false;
+                    if (j.locked_seconds) {
+                        // Locked: disable the button and count down the exact seconds from the server
+                        let remaining = j.locked_seconds;
+                        if (submitBtn) submitBtn.disabled = true;
+                        msg('Account locked. Try again in ' + remaining + ' s.');
+                        const lockTimer = setInterval(() => {
+                            remaining--;
+                            if (remaining <= 0) {
+                                clearInterval(lockTimer);
+                                document.getElementById('msg').className = 'alert';
+                                if (submitBtn) {
+                                    submitBtn.disabled = false;
+                                    submitBtn.textContent = 'Verify Answer';
+                                }
+                            } else {
+                                msg('Account locked. Try again in ' + remaining + ' s.');
+                            }
+                        }, 1000);
+                        return;
+                    }
                     if (submitBtn) {
                         submitBtn.disabled = false;
                         submitBtn.textContent = 'Verify Answer';
                     }
-                    isSubmittingAnswers = false;
                     return; 
                 }
                 
@@ -396,6 +422,14 @@
             }
         }
         
+        function toggleForgotPw(inputId, btn) {
+            const inp = document.getElementById(inputId);
+            if (!inp) return;
+            const isPw = inp.type === 'password';
+            inp.type = isPw ? 'text' : 'password';
+            if (btn) btn.textContent = isPw ? 'Hide' : 'Show';
+        }
+
         let isChangingPw = false;
         async function changePw(){
             if (isChangingPw) return;
@@ -404,6 +438,22 @@
             const pw2 = (document.getElementById('newPw2')?.value || '');
             if (pw.length < 8) {
                 msg("Password must be at least 8 characters.");
+                return;
+            }
+            if (!/[a-z]/.test(pw)) {
+                msg("Password must contain at least one lowercase (small) letter.");
+                return;
+            }
+            if (!/[A-Z]/.test(pw)) {
+                msg("Password must contain at least one uppercase (capital) letter.");
+                return;
+            }
+            if (!/[0-9]/.test(pw)) {
+                msg("Password must contain at least one number.");
+                return;
+            }
+            if (!/[^A-Za-z0-9]/.test(pw)) {
+                msg("Password must contain at least one special character.");
                 return;
             }
             if (pw !== pw2) {

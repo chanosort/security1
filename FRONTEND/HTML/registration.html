@@ -28,6 +28,12 @@
 </head>
 <body>
 
+    <nav class="page-nav" aria-label="Page Navigation">
+        <a href="/HTML/home.html" class="page-nav-link">Home</a>
+        <a href="/HTML/index.html" class="page-nav-link">Log In</a>
+        <a href="/HTML/registration.html" class="page-nav-link active">Register</a>
+    </nav>
+
     <div class="container">
         <div class="header">
             <h1>ExpenseTracker</h1>
@@ -45,7 +51,19 @@
                 <!-- Honeypot (bot detection) -->
                 <input type="text" name="website" id="website" style="display:none !important;" tabindex="-1" autocomplete="off">
 
-                <!-- Section 1: Personal Information -->
+                <!-- Step Progress Bar -->
+                <div class="reg-progress">
+                    <div class="reg-progress-label">
+                        <span id="regProgressText">Step 1 of 6: Personal Information</span>
+                        <span id="regProgressPct">17%</span>
+                    </div>
+                    <div class="reg-progress-track">
+                        <div class="reg-progress-fill" id="regProgressFill"></div>
+                    </div>
+                </div>
+
+                <!-- Step 1: Personal Information -->
+                <div class="reg-step active" id="regStep1">
                 <div class="form-section-title">
                     <span class="step-num">1</span>
                     <span>Personal Information</span>
@@ -107,7 +125,13 @@
                     </div>
                 </div>
 
-                <!-- Section 2: Residential Address -->
+                <div class="step-actions">
+                    <button type="button" class="btn-step-next" onclick="nextRegStep(1)">Next &rarr;</button>
+                </div>
+                </div>
+
+                <!-- Step 2: Residential Address -->
+                <div class="reg-step" id="regStep2">
                 <div class="form-section-title">
                     <span class="step-num">2</span>
                     <span>Residential Address</span>
@@ -155,7 +179,14 @@
                     </div>
                 </div>
 
-                <!-- Section 3: Account Credentials -->
+                <div class="step-actions has-back">
+                    <button type="button" class="btn-step-back" onclick="prevRegStep(2)">&larr; Back</button>
+                    <button type="button" class="btn-step-next" onclick="nextRegStep(2)">Next &rarr;</button>
+                </div>
+                </div>
+
+                <!-- Step 3: Account Credentials -->
+                <div class="reg-step" id="regStep3">
                 <div class="form-section-title">
                     <span class="step-num">3</span>
                     <span>Account Credentials</span>
@@ -199,7 +230,14 @@
                     </div>
                 </div>
 
-                <!-- Section 4: Security Questions -->
+                <div class="step-actions has-back">
+                    <button type="button" class="btn-step-back" onclick="prevRegStep(3)">&larr; Back</button>
+                    <button type="button" class="btn-step-next" onclick="nextRegStep(3)">Next &rarr;</button>
+                </div>
+                </div>
+
+                <!-- Step 4: Security Questions -->
+                <div class="reg-step" id="regStep4">
                 <div class="form-section-title">
                     <span class="step-num">4</span>
                     <span>Account Recovery Questions</span>
@@ -255,7 +293,14 @@
                     </div>
                 </fieldset>
 
-                <!-- Section 5: Financial Profile -->
+                <div class="step-actions has-back">
+                    <button type="button" class="btn-step-back" onclick="prevRegStep(4)">&larr; Back</button>
+                    <button type="button" class="btn-step-next" onclick="nextRegStep(4)">Next &rarr;</button>
+                </div>
+                </div>
+
+                <!-- Step 5: Financial Profile -->
+                <div class="reg-step" id="regStep5">
                 <div class="form-section-title">
                     <span class="step-num">5</span>
                     <span>Financial Profile</span>
@@ -280,7 +325,14 @@
                     </div>
                 </div>
 
-                <!-- Section 6: Security Verification -->
+                <div class="step-actions has-back">
+                    <button type="button" class="btn-step-back" onclick="prevRegStep(5)">&larr; Back</button>
+                    <button type="button" class="btn-step-next" onclick="nextRegStep(5)">Next &rarr;</button>
+                </div>
+                </div>
+
+                <!-- Step 6: Security Verification -->
+                <div class="reg-step" id="regStep6">
                 <div class="form-section-title">
                     <span class="step-num">6</span>
                     <span>Security Verification</span>
@@ -307,9 +359,11 @@
                     <div class="error-message" id="regConsentError" style="text-align: center;"></div>
                 </div>
 
-                <!-- Centered Compact Button (Not Lengthy) - 1-Click Functional -->
-                <div style="display: flex; justify-content: center; margin-top: 15px;">
-                    <button type="submit" class="btn-primary" id="registerBtn" onclick="handleRegister(event)" style="max-width: 260px; width: 100%;">Create Account</button>
+                <!-- Step 6 Actions (Back + Create Account) - 1-Click Functional -->
+                <div class="step-actions has-back">
+                    <button type="button" class="btn-step-back" onclick="prevRegStep(6)">&larr; Back</button>
+                    <button type="submit" class="btn-primary" id="registerBtn" onclick="handleRegister(event)" style="max-width: 240px; width: 100%;">Create Account</button>
+                </div>
                 </div>
 
                 <div class="form-footer" style="text-align: center; margin-top: 18px;">
@@ -356,10 +410,10 @@
         </footer>
     </div>
 
-    <script src="../JS/config.js?v=20261126"></script>
-    <script src="../JS/ui.js?v=20261126"></script>
-    <script src="../JS/auth.js?v=20261126"></script>
-    <script src="../JS/validation.js?v=20261126"></script>
-    <script src="../JS/registration.js?v=20261126"></script>
+    <script src="../JS/config.js?v=20261126d"></script>
+    <script src="../JS/ui.js?v=20261126d"></script>
+    <script src="../JS/auth.js?v=20261126d"></script>
+    <script src="../JS/validation.js?v=20261126d"></script>
+    <script src="../JS/registration.js?v=20261126d"></script>
 </body>
 </html>

@@ -43,52 +43,46 @@ window.addEventListener('pageshow', function(event) {
 });
 
 // ============================================
-// IDLE SESSION TIMEOUT (Handout §8.4: 15 min, warn 1 min before)
+// SESSION AUTO LOG-OUT (10 seconds, regardless of cursor movement)
+// Shows in-page warning banner 5 seconds before logging out (no alert popup)
 // ============================================
-var _lastActivity = Date.now();
-var _idleWarned = false;
+var _sessionStart = Date.now();
 
-function resetIdleTimer() {
-    _lastActivity = Date.now();
-    _idleWarned = false;
-    var warnBox = document.getElementById('idleWarningModal');
-    if (warnBox) warnBox.style.display = 'none';
-}
-
-function initIdleTimeout() {
-    if (!isAuthenticated()) return;
-
-    ['mousemove', 'mousedown', 'keydown', 'touchstart', 'scroll'].forEach(function(evt) {
-        window.addEventListener(evt, resetIdleTimer, { passive: true });
-    });
-
-    setInterval(function() {
-        if (!isAuthenticated()) return;
-        var timeoutMs = (CONFIG.IDLE_TIMEOUT_MINUTES || 15) * 60 * 1000;
-        var warnMs = timeoutMs - (60 * 1000); // 1 minute before timeout
-        var elapsed = Date.now() - _lastActivity;
-
-        if (elapsed >= timeoutMs) {
-            clearAuthData();
-            alert('Your session has expired due to 15 minutes of inactivity. You have been logged out.');
-            window.location.href = '/HTML/index.html';
-        } else if (elapsed >= warnMs && !_idleWarned) {
-            _idleWarned = true;
-            showIdleWarning();
-        }
-    }, 5000);
-}
-
-function showIdleWarning() {
+function showSessionWarning(secsLeft) {
     var warnBox = document.getElementById('idleWarningModal');
     if (!warnBox) {
         warnBox = document.createElement('div');
         warnBox.id = 'idleWarningModal';
-        warnBox.style.cssText = 'position:fixed;top:20px;right:20px;z-index:99999;background:#fff3cd;color:#856404;border:1px solid #ffeeba;padding:15px 20px;border-radius:8px;box-shadow:0 4px 12px rgba(0,0,0,0.15);font-size:14px;font-weight:600;max-width:320px;';
-        warnBox.innerHTML = '⚠️ Inactivity Warning: You will be logged out in 1 minute due to inactivity. Move your mouse or click anywhere to stay signed in.';
+        warnBox.style.cssText = 'position:fixed;top:20px;right:20px;z-index:99999;background:#fff3cd;color:#856404;border:1px solid #ffeeba;padding:15px 20px;border-radius:10px;box-shadow:0 4px 14px rgba(0,0,0,0.16);font-size:14px;font-weight:700;max-width:340px;';
         document.body.appendChild(warnBox);
     }
+    warnBox.textContent = '⚠️ Session Warning: You will be logged out in ' + secsLeft + ' s.';
     warnBox.style.display = 'block';
+}
+
+function initIdleTimeout() {
+    if (!isAuthenticated()) return;
+    _sessionStart = Date.now();
+
+    var timer = setInterval(function() {
+        if (!isAuthenticated()) {
+            clearInterval(timer);
+            return;
+        }
+        var timeoutSec = (typeof CONFIG !== 'undefined' && CONFIG.SESSION_TIMEOUT_SECONDS) ? CONFIG.SESSION_TIMEOUT_SECONDS : 10;
+        var timeoutMs = timeoutSec * 1000;
+        var warnMs = Math.max(0, timeoutMs - 5000); // show warning 5s before logout
+        var elapsed = Date.now() - _sessionStart;
+
+        if (elapsed >= timeoutMs) {
+            clearInterval(timer);
+            clearAuthData();
+            window.location.replace('/HTML/index.html');
+        } else if (elapsed >= warnMs) {
+            var secsLeft = Math.max(1, Math.ceil((timeoutMs - elapsed) / 1000));
+            showSessionWarning(secsLeft);
+        }
+    }, 500);
 }
 
 document.addEventListener('DOMContentLoaded', function() {

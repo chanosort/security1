@@ -19,6 +19,12 @@
 </head>
 <body>
 
+    <nav class="page-nav" aria-label="Page Navigation">
+        <a href="/HTML/home.html" class="page-nav-link">Home</a>
+        <a href="/HTML/index.html" class="page-nav-link active">Log In</a>
+        <a href="/HTML/registration.html" class="page-nav-link">Register</a>
+    </nav>
+
     <div class="container">
         <div class="header">
             <h1>ExpenseTracker</h1>
@@ -58,8 +64,8 @@
                 <div id="lockoutBanner" class="alert alert-error" style="display:none; margin-top: 15px;"></div>
 
                 <div class="form-footer" id="loginFormFooter">
-                    <a href="/HTML/forgot.html" id="forgotLink">Forgot password?</a>
-                    <span class="divider">|</span>
+                    <a href="/HTML/forgot.html" id="forgotLink" style="display:none;">Forgot password?</a>
+                    <span class="divider" id="forgotDivider" style="display:none;">|</span>
                     <a href="/HTML/registration.html" id="createAccountLink">Create New Account</a>
                 </div>
             </form>
@@ -91,9 +97,9 @@
         </footer>
     </div>
 
-    <script src="/JS/config.js?v=20261125"></script>
-    <script src="/JS/ui.js?v=20261125"></script>
-    <script src="/JS/auth.js?v=20261125"></script>
-    <script src="/JS/index.js?v=20261125"></script>
+    <script src="/JS/config.js?v=20261126"></script>
+    <script src="/JS/ui.js?v=20261126"></script>
+    <script src="/JS/auth.js?v=20261126"></script>
+    <script src="/JS/index.js?v=20261126"></script>
 </body>
 </html>
