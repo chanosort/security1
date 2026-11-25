@@ -516,6 +516,25 @@ document.addEventListener('DOMContentLoaded', function() {
     var idInput = document.getElementById('regIdNumber');
     if (idInput) {
         var _idDebounce = null;
+        var _idTakenSet = {};   // local cache of known-taken IDs to show error instantly on re-focus
+
+        var _showIdError = function(msg) {
+            var err = document.getElementById('regIdNumberError');
+            var group = idInput.closest('.form-group');
+            if (!err) return;
+            if (msg) {
+                idInput.classList.add('error');
+                if (group) group.classList.add('error');
+                err.textContent = msg;
+                err.classList.add('show');
+            } else {
+                idInput.classList.remove('error');
+                if (group) group.classList.remove('error');
+                err.classList.remove('show');
+                err.textContent = '';
+            }
+        };
+
         var checkIdAvailability = function() {
             var raw = (idInput.value || '').trim();
             var digits = raw.replace(/\D/g, '');
@@ -524,40 +543,39 @@ document.addEventListener('DOMContentLoaded', function() {
                 raw = idInput.value;
             }
             var val = idInput.value.trim();
-            var err = document.getElementById('regIdNumberError');
-            var group = idInput.closest('.form-group');
             if (!val) {
+                var err = document.getElementById('regIdNumberError');
                 if (err && err.textContent === 'This ID Number is already registered.') {
-                    err.classList.remove('show');
-                    err.textContent = '';
-                    idInput.classList.remove('error');
-                    if (group) group.classList.remove('error');
+                    _showIdError('');
                 }
                 return;
             }
             if (!/^\d{4}-\d{4}$/.test(val)) return;
 
+            // Show error instantly if this ID was already confirmed taken
+            if (_idTakenSet[val]) {
+                _showIdError('This ID Number is already registered.');
+                return;
+            }
+
             fetch(CONFIG.API_URL + '/id-number-available?id=' + encodeURIComponent(val), { credentials: 'include' })
                 .then(function(r) { return r.json(); })
                 .then(function(j) {
-                    var err = document.getElementById('regIdNumberError');
-                    var group = idInput.closest('.form-group');
-                    if (!err || !j || j.isServerError) return;
+                    if (!j) return;
+                    var currentVal = idInput.value.trim();
+                    if (currentVal !== val) return; // user changed the value while we were waiting
                     if (j.taken) {
-                        idInput.classList.add('error');
-                        if (group) group.classList.add('error');
-                        err.textContent = 'This ID Number is already registered.';
-                        err.classList.add('show');
+                        _idTakenSet[val] = true;
+                        _showIdError('This ID Number is already registered.');
                     } else if (j.available === true) {
-                        if (err.textContent === 'This ID Number is already registered.') {
-                            idInput.classList.remove('error');
-                            if (group) group.classList.remove('error');
-                            err.classList.remove('show');
-                            err.textContent = '';
+                        delete _idTakenSet[val];
+                        var err = document.getElementById('regIdNumberError');
+                        if (err && err.textContent === 'This ID Number is already registered.') {
+                            _showIdError('');
                         }
                     }
                 })
-                .catch(function() {});
+                .catch(function(e) { console.error('[ID check] fetch failed:', e); });
         };
 
         idInput.addEventListener('input', function() {
@@ -568,15 +586,19 @@ document.addEventListener('DOMContentLoaded', function() {
                 this.value = digits.slice(0, 4) + '-' + digits.slice(4);
                 raw = this.value;
             }
-            var err = document.getElementById('regIdNumberError');
-            if (/^\d{4}-\d{4}$/.test(raw)) {
-                _idDebounce = setTimeout(checkIdAvailability, 150);
-            } else if (err && err.textContent === 'This ID Number is already registered.') {
-                err.classList.remove('show');
-                err.textContent = '';
-                idInput.classList.remove('error');
-                var group = idInput.closest('.form-group');
-                if (group) group.classList.remove('error');
+            var val = raw;
+            if (/^\d{4}-\d{4}$/.test(val)) {
+                // Instant cache hit
+                if (_idTakenSet[val]) {
+                    _showIdError('This ID Number is already registered.');
+                } else {
+                    _idDebounce = setTimeout(checkIdAvailability, 300);
+                }
+            } else {
+                var err = document.getElementById('regIdNumberError');
+                if (err && err.textContent === 'This ID Number is already registered.') {
+                    _showIdError('');
+                }
             }
         });
 
